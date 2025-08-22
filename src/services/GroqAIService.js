@@ -11,11 +11,11 @@ class GroqAIService {
         this.baseUrl = 'https://api.groq.com/openai/v1';
         this.apiKey = this.getApiKey();
         this.models = {
-            chat: 'openai/gpt-oss-20b',           // Primary chat model
-            reasoning: 'openai/gpt-oss-20b',     // Tool-capable model for complex queries
-            analysis: 'openai/gpt-oss-20b',     // Tool-capable model for analysis
+            chat: 'openai/gpt-oss-120b',           // Primary chat model
+            reasoning: 'openai/gpt-oss-120b',     // Tool-capable model for complex queries
+            analysis: 'openai/gpt-oss-120b',     // Tool-capable model for analysis
             lightweight: 'llama-3.1-8b-instant',     // Fast responses for simple queries
-            toolCapable: 'openai/gpt-oss-20b'   // Specifically for tool use
+            toolCapable: 'openai/gpt-oss-120b'   // Specifically for tool use
         };
         this.isAvailable = true; // Groq is cloud-based, always available
         this.lastChecked = Date.now();
@@ -119,7 +119,7 @@ class GroqAIService {
 
         // If tools were used, query needs context, or is complex, use full model
         if (hasToolContext || isComplex || needsContext || queryLength > 100) {
-            return this.models.toolCapable; // openai/gpt-oss-20b
+            return this.models.toolCapable; // openai/gpt-oss-120b
         }
 
         // Use lightweight model for simple queries
@@ -527,9 +527,9 @@ RESPONSE GUIDELINES:
         try {
             const systemPrompts = require('../prompts/systemPrompts.json');
             systemPrompt = systemPrompts.prompts?.farming_assistant?.languages?.['en-IN'] || 
-                          "Hey! I'm your farming buddy, here to help you grow better crops and make more money. Let's figure this out together!";
+                "You are a trusted farming advisor for small and medium farmers in India. Your advice should be practical, regionally relevant, and based on local conditions whenever possible. Use simple, clear language—avoid jargon and technical terms. If you don't know something, say so honestly and suggest how the farmer can find out locally (e.g., from a neighbor, local agri office, or market). Incorporate traditional wisdom and local practices when relevant. Never assume the farmer has advanced technology or internet access. Give 1-3 clear, actionable steps, and always prioritize safety and sustainability.";
         } catch (e) {
-            systemPrompt = "Hey! I'm your farming buddy, here to help you grow better crops and make more money. Let's figure this out together!";
+            systemPrompt = "You are a trusted farming advisor for small and medium farmers in India. Your advice should be practical, regionally relevant, and based on local conditions whenever possible. Use simple, clear language—avoid jargon and technical terms. If you don't know something, say so honestly and suggest how the farmer can find out locally (e.g., from a neighbor, local agri office, or market). Incorporate traditional wisdom and local practices when relevant. Never assume the farmer has advanced technology or internet access. Give 1-3 clear, actionable steps, and always prioritize safety and sustainability.";
         }
         
         let prompt = `${systemPrompt}\n\n${userLine}`;

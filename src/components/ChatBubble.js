@@ -247,7 +247,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   questionText: {
-    fontSize: 13,
+  fontSize: 11,
     color: colors.primary,
     fontWeight: '500',
     fontStyle: 'italic',
@@ -430,7 +430,7 @@ const markdownStyles = StyleSheet.create({
     paddingVertical: 2,
     borderRadius: 4,
     fontFamily: 'monospace',
-    fontSize: 13,
+  fontSize: 11,
     color: colors.primary,
   },
 });

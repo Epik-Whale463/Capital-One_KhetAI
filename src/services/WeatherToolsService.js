@@ -6,6 +6,32 @@
 import EnvironmentConfig from '../config/environment.js';
 
 class WeatherToolsService {
+  // Static irrigation recommendation logic (restored for compatibility)
+  static generateIrrigationRecommendation(cropET, upcomingRain, soilCapacity, temp, humidity) {
+    const netWaterNeed = Math.max(0, cropET - upcomingRain);
+    if (netWaterNeed < 2) {
+      return {
+        action: 'no_irrigation',
+        message: 'No irrigation needed. Sufficient rainfall expected.',
+        waterAmount: 0,
+        timing: 'none'
+      };
+    } else if (netWaterNeed < 5) {
+      return {
+        action: 'light_irrigation',
+        message: 'Light irrigation recommended in 2-3 days.',
+        waterAmount: Math.round(netWaterNeed),
+        timing: 'evening'
+      };
+    } else {
+      return {
+        action: 'irrigation_needed',
+        message: 'Irrigation needed within 24 hours.',
+        waterAmount: Math.round(netWaterNeed),
+        timing: temp > 30 ? 'early_morning_or_evening' : 'morning'
+      };
+    }
+  }
   static BASE_URL = 'https://api.openweathermap.org/data';
   static GEO_URL = 'https://api.openweathermap.org/geo/1.0/direct';
   static _geoCache = new Map();
@@ -280,32 +306,6 @@ class WeatherToolsService {
     return 0.0023 * (temp + 17.8) * Math.sqrt(tempRange) * 0.408;
   }
 
-  static generateIrrigationRecommendation(cropET, upcomingRain, soilCapacity, temp, humidity) {
-    const netWaterNeed = Math.max(0, cropET - upcomingRain);
-    
-    if (netWaterNeed < 2) {
-      return {
-        action: 'no_irrigation',
-        message: 'No irrigation needed. Sufficient rainfall expected.',
-        waterAmount: 0,
-        timing: 'none'
-      };
-    } else if (netWaterNeed < 5) {
-      return {
-        action: 'light_irrigation',
-        message: 'Light irrigation recommended in 2-3 days.',
-        waterAmount: Math.round(netWaterNeed),
-        timing: 'evening'
-      };
-    } else {
-      return {
-        action: 'irrigation_needed',
-        message: 'Irrigation needed within 24 hours.',
-        waterAmount: Math.round(netWaterNeed),
-        timing: temp > 30 ? 'early_morning_or_evening' : 'morning'
-      };
-    }
-  }
 
   static generateCustomFarmingAlerts(current, daily, crops) {
     const alerts = [];

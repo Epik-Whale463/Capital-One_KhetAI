@@ -199,7 +199,7 @@ class AutonomousAgentService {
 
         try {
             const reasoningResponse = await this.groq.generateFarmingAdvice(reasoningPrompt, {
-                model: 'openai/gpt-oss-20b', // Use most capable model for reasoning
+                model: 'openai/gpt-oss-120b', // Use most capable model for reasoning
                 maxTokens: 2000,
                 temperature: 0.1 // Low temperature for logical reasoning
             });

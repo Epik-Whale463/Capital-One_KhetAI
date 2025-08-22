@@ -234,13 +234,13 @@ const styles = StyleSheet.create({
     paddingBottom: 10,
   },
   answerText: {
-    fontSize: 12, // Reduced font size for better readability
+    fontSize: 11, // Further reduced font size for better compactness
     color: colors.textPrimary,
-    lineHeight: 18, // Adjusted line height for harmony
+    lineHeight: 16, // Slightly reduced line height
     backgroundColor: '#F8FDF8',
-    padding: 16, // Increased padding for consistent spacing
+    padding: 16,
     borderRadius: 12,
-    wordWrap: 'break-word', // Ensures proper text wrapping
+    wordWrap: 'break-word',
   },
   actionButtons: {
     flexDirection: 'row',
@@ -335,9 +335,9 @@ const markdownStyles = StyleSheet.create({
     wordBreak: 'keep-all',
   },
   body: {
-    fontSize: 13,
+    fontSize: 12, // Reduced font size for markdown body
     color: colors.textPrimary,
-    lineHeight: 20,
+    lineHeight: 18,
   },
   heading1: {
     fontSize: 17,

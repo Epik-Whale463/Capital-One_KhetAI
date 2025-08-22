@@ -75,7 +75,7 @@ const styles = StyleSheet.create({
     marginBottom: 4
   },
   question: { fontSize: 13, fontWeight: '600', color: colors.textPrimary, marginBottom: 2 },
-  answer: { fontSize: 13, color: colors.textSecondary },
+  answer: { fontSize: 11, color: colors.textSecondary },
   metaRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   meta: { fontSize: 11, color: colors.textSecondary },
   linkBtn: { padding: 4 },

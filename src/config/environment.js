@@ -53,7 +53,7 @@ class EnvironmentConfig {
   static getGroqConfig() {
     return {
       baseUrl: 'https://api.groq.com/openai/v1',
-      defaultModel: 'openai/gpt-oss-20b' // Primary model for complex queries
+      defaultModel: 'openai/gpt-oss-120b' // Primary model for complex queries
     };
   }
 
@@ -63,7 +63,7 @@ class EnvironmentConfig {
       baseUrl: null,
       defaultModel: null,
       deprecated: true,
-      note: 'Local on-prem models disabled; using Groq cloud models (openai/gpt-oss-20b)'
+      note: 'Local on-prem models disabled; using Groq cloud models (openai/gpt-oss-120b)'
     };
   }
 
