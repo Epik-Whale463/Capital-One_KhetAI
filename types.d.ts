@@ -1,0 +1,13 @@
+declare module 'react';
+declare module 'react-native';
+declare module '@expo/vector-icons';
+declare module 'expo-linear-gradient';
+declare module 'expo-av';
+declare module 'expo-location';
+declare module '@react-native-async-storage/async-storage';
+declare module '@react-navigation/native';
+declare module '@react-navigation/bottom-tabs';
+declare module 'react-native-safe-area-context';
+declare module 'react-native-screens';
+declare module 'expo-status-bar';
+declare module 'expo-font';

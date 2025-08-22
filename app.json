@@ -1,0 +1,7 @@
+{
+  "plugins": [
+    "expo-font",
+    "expo-audio",
+    "expo-video"
+  ]
+}
