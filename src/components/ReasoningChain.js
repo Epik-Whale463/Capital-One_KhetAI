@@ -20,6 +20,7 @@ const STEP_META = {
     analysis: { icon: 'sparkles', color: '#6b4aff' },
     response: { icon: 'document-text', color: colors.success },
     error: { icon: 'warning', color: '#d9534f' },
+    uncertain: { icon: 'help-circle', color: '#ff8c00' }, // Orange for uncertainty
     default: { icon: 'flash', color: colors.primary }
 };
 
@@ -107,12 +108,20 @@ const ReasoningStep = memo(({ step, isActive, isCompleted, delay = 0, isLast = f
                 <Animated.View style={[styles.minimalActiveDot, { transform: [{ scale }], shadowOpacity }]} />
             );
         }
+        if (step.status === 'uncertain') {
+            return <View style={styles.minimalUncertainDot}><Text style={styles.uncertainIcon}>?</Text></View>;
+        }
+        if (step.status === 'error') {
+            return <View style={styles.minimalErrorDot}><Text style={styles.errorIcon}>!</Text></View>;
+        }
         return <View style={styles.minimalInactiveDot} />;
     };
 
     const getStepColor = () => {
         if (isCompleted) return colors.success;
         if (isActive) return colors.primary;
+        if (step.status === 'uncertain') return '#ff8c00'; // Orange for uncertainty
+        if (step.status === 'error') return '#d9534f'; // Red for errors
         return colors.textSecondary;
     };
 
@@ -504,7 +513,47 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: 'rgba(40, 167, 69, 0.2)', // Success green border
     },
+    minimalUncertainDot: {
+        width: 16,
+        height: 16,
+        borderRadius: 8,
+        backgroundColor: '#ff8c00', // Orange for uncertainty
+        alignItems: 'center',
+        justifyContent: 'center',
+        shadowColor: '#ff8c00',
+        shadowOffset: { width: 0, height: 2 },
+        shadowRadius: 6,
+        shadowOpacity: 0.25,
+        elevation: 4,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 140, 0, 0.2)',
+    },
+    minimalErrorDot: {
+        width: 16,
+        height: 16,
+        borderRadius: 8,
+        backgroundColor: '#d9534f', // Red for errors
+        alignItems: 'center',
+        justifyContent: 'center',
+        shadowColor: '#d9534f',
+        shadowOffset: { width: 0, height: 2 },
+        shadowRadius: 6,
+        shadowOpacity: 0.25,
+        elevation: 4,
+        borderWidth: 1,
+        borderColor: 'rgba(217, 83, 79, 0.2)',
+    },
     minimalCheck: {
+        fontSize: 10,
+        fontWeight: '700',
+        color: '#fff'
+    },
+    uncertainIcon: {
+        fontSize: 10,
+        fontWeight: '700',
+        color: '#fff'
+    },
+    errorIcon: {
         fontSize: 10,
         fontWeight: '700',
         color: '#fff'

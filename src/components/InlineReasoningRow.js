@@ -174,6 +174,10 @@ export const InlineReasoningRow = ({ steps = [], visible = false, onPress, colla
                     <View style={styles.activeIndicator}>
                       <View style={styles.pulse} />
                     </View>
+                  ) : step.status === 'uncertain' ? (
+                    <Ionicons name="help-circle" size={16} color="#ff8c00" />
+                  ) : step.status === 'error' ? (
+                    <Ionicons name="warning" size={16} color="#d9534f" />
                   ) : (
                     <View style={styles.pendingIndicator} />
                   )}

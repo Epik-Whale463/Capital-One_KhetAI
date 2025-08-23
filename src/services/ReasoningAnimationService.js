@@ -40,6 +40,7 @@ class ReasoningAnimationService {
         FINISHING: 'finishing', // Step is completing (micro-transition)
         COMPLETED: 'completed', // Step is done
         ERROR: 'error',         // Step failed
+        UNCERTAIN: 'uncertain', // Step has uncertain/conflicting data
         SKIPPED: 'skipped'      // Step was bypassed
     };
 

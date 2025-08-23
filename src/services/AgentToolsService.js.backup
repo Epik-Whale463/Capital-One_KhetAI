@@ -676,7 +676,7 @@ class AgentToolsService {
             params.cropType = cropFromQuery;
             params.crops = [cropFromQuery];
           } else {
-            // Use a sensible default for Indian farmers
+            // Use rice as default for Indian farmers
             params.cropType = "rice";
             params.crops = ["rice"];
           }
@@ -685,20 +685,16 @@ class AgentToolsService {
 
       case 'get_market_prices':
         // Extract commodity from query or user context
-        const commodities = ['wheat', 'rice', 'cotton', 'sugarcane', 'onion', 'potato', 'tomato', 'chilli', 'mirchi', 'maize', 'tur', 'gram', 'soybean'];
-        const foundCommodity = commodities.find(c => query.toLowerCase().includes(c.toLowerCase()));
-        // Prioritize user's actual crop over defaults
-        const userCrop = userContext.crops?.[0]?.toLowerCase();
-        params.commodity = foundCommodity || userCrop || 'wheat';
+        const commodities = ['wheat', 'rice', 'cotton', 'sugarcane', 'onion', 'potato', 'tomato'];
+        const foundCommodity = commodities.find(c => query.toLowerCase().includes(c));
+        params.commodity = foundCommodity || userContext.crops?.[0] || 'wheat';
         params.location = userContext.location || '';
         break;
 
       case 'get_realtime_market_price': {
-        const commodities = ['wheat', 'rice', 'cotton', 'sugarcane', 'onion', 'potato', 'tomato', 'maize', 'tur', 'gram', 'soybean', 'chilli', 'mirchi'];
-        const foundCommodity = commodities.find(c => query.toLowerCase().includes(c.toLowerCase()));
-        // Prioritize user's actual crop over defaults
-        const userCrop = userContext.crops?.[0]?.toLowerCase();
-        params.commodity = foundCommodity || userCrop || 'wheat';
+        const commodities = ['wheat', 'rice', 'cotton', 'sugarcane', 'onion', 'potato', 'tomato', 'maize', 'tur', 'gram', 'soybean'];
+        const foundCommodity = commodities.find(c => query.toLowerCase().includes(c));
+        params.commodity = foundCommodity || userContext.crops?.[0] || 'wheat';
         // Attempt to parse optional variety tokens like 'basmati', 'sona masuri'
         const varietyMatches = query.match(/(basmati|sona\s*masuri|ir64|sharbati|hybrid|desi)/i);
         if (varietyMatches) params.variety = varietyMatches[1];
@@ -708,11 +704,9 @@ class AgentToolsService {
         break; }
 
       case 'get_agmarknet_prices': {
-        const commodities = ['wheat', 'rice', 'cotton', 'sugarcane', 'onion', 'potato', 'tomato', 'maize', 'tur', 'gram', 'soybean', 'turmeric', 'chilli', 'coriander', 'groundnut', 'mirchi'];
-        const foundCommodity = commodities.find(c => query.toLowerCase().includes(c.toLowerCase()));
-        // Prioritize user's actual crop over defaults
-        const userCrop = userContext.crops?.[0]?.toLowerCase();
-        params.commodity = foundCommodity || userCrop || 'wheat';
+        const commodities = ['wheat', 'rice', 'cotton', 'sugarcane', 'onion', 'potato', 'tomato', 'maize', 'tur', 'gram', 'soybean', 'turmeric', 'chilli', 'coriander', 'groundnut'];
+        const foundCommodity = commodities.find(c => query.toLowerCase().includes(c));
+        params.commodity = foundCommodity || userContext.crops?.[0] || 'wheat';
         
         // Extract state from query or user context
         const extractedState = this.extractLocationFromQuery(query) || userContext.location;
@@ -741,9 +735,7 @@ class AgentToolsService {
         break; }
 
       case 'analyze_plant_disease':
-        // Prioritize user's actual crop for disease analysis
-        const userCropForDisease = userContext.crops?.[0] || this.extractCropFromQuery(query) || 'wheat';
-        params.cropType = userCropForDisease;
+        params.cropType = userContext.crops?.[0] || 'wheat';
         params.symptoms = this.extractSymptomsFromQuery(query);
         params.imageAvailable = false;
         break;
@@ -818,7 +810,7 @@ class AgentToolsService {
   static extractCropFromQuery(query) {
     const queryLower = query.toLowerCase();
     
-    // Common crops in India with aliases
+    // Common crops in India
     const crops = [
       'wheat', 'rice', 'cotton', 'sugarcane', 'maize', 'barley', 'jowar', 'bajra',
       'ragi', 'oats', 'gram', 'tur', 'moong', 'urad', 'masoor', 'arhar', 'chana',
@@ -827,26 +819,11 @@ class AgentToolsService {
       'coffee', 'tea', 'rubber', 'jute', 'mesta', 'tobacco', 'potato', 'onion',
       'tomato', 'brinjal', 'okra', 'cabbage', 'cauliflower', 'peas', 'beans',
       'carrot', 'radish', 'beetroot', 'spinach', 'fenugreek', 'coriander', 'turmeric',
-      'ginger', 'garlic', 'chilli', 'mirchi', 'black pepper', 'cardamom', 'cinnamon', 'clove',
+      'ginger', 'garlic', 'chilli', 'black pepper', 'cardamom', 'cinnamon', 'clove',
       'nutmeg', 'mango', 'banana', 'orange', 'apple', 'grapes', 'pomegranate',
       'guava', 'papaya', 'pineapple', 'watermelon', 'muskmelon', 'cucumber'
     ];
     
-    // Handle common aliases
-    const aliases = {
-      'chili': 'chilli',
-      'pepper': 'chilli',  // when context suggests chilli pepper
-      'hot pepper': 'chilli'
-    };
-    
-    // Check aliases first
-    for (const [alias, actualCrop] of Object.entries(aliases)) {
-      if (queryLower.includes(alias)) {
-        return actualCrop;
-      }
-    }
-    
-    // Check main crop names
     for (const crop of crops) {
       if (queryLower.includes(crop)) {
         return crop;
@@ -972,125 +949,190 @@ class AgentToolsService {
     return baseContext;
   }
 
+  // Detect conflicts between multiple data sources
   static detectDataConflicts(toolResults) {
     const conflicts = [];
     
-    // Check for conflicting weather data
-    const weatherResults = toolResults.filter(r => r.tool === 'get_weather_forecast');
-    if (weatherResults.length > 1) {
-      const temps = weatherResults.map(r => r.result?.temperature);
-      const tempDiff = Math.max(...temps) - Math.min(...temps);
-      if (tempDiff > 5) {
-        conflicts.push({
-          type: 'Weather Data Mismatch',
-          description: `Temperature readings vary by ${tempDiff}°C across sources`
-        });
-      }
-    }
+    // Check for price conflicts between different sources
+    const priceResults = toolResults.filter(r => 
+      r.success && r.toolName && (
+        r.toolName.includes('market_price') || 
+        r.toolName.includes('price')
+      )
+    );
     
-    // Check for conflicting price data
-    const priceResults = toolResults.filter(r => r.tool === 'get_market_prices' || r.tool === 'get_agmarknet_prices');
-    if (priceResults.length > 1) {
-      const prices = priceResults.map(r => r.result?.price || r.result?.average);
-      const priceDiff = (Math.max(...prices) - Math.min(...prices)) / Math.min(...prices) * 100;
-      if (priceDiff > 10) {
-        conflicts.push({
-          type: 'Price Data Mismatch',
-          description: `Market prices vary by ${priceDiff.toFixed(1)}% across sources`
-        });
-      }
-    }
-    
-    // Check for failed tool executions
-    const failedTools = toolResults.filter(r => r.success === false);
-    if (failedTools.length > 0) {
+    if (priceResults.length >= 2) {
+      // Simple heuristic - if we have multiple price sources, flag as potential conflict
       conflicts.push({
-        type: 'Data Unavailable',
-        description: `${failedTools.length} tools failed: ${failedTools.map(t => t.tool).join(', ')}`
+        type: 'price_discrepancy',
+        description: 'Multiple price sources available - cross-referencing for accuracy',
+        sources: priceResults.map(r => r.toolName),
+        severity: 'medium'
+      });
+    }
+    
+    // Check for weather data inconsistencies
+    const weatherResults = toolResults.filter(r => 
+      r.success && r.toolName && r.toolName.includes('weather')
+    );
+    
+    if (weatherResults.length >= 2) {
+      // Check if weather data varies significantly
+      conflicts.push({
+        type: 'weather_variance',
+        description: 'Multiple weather sources being compared for reliability',
+        sources: weatherResults.map(r => r.toolName),
+        severity: 'low'
       });
     }
     
     return conflicts;
   }
 
-  static categorizeFailure(error) {
-    const errorStr = error?.toString().toLowerCase() || '';
-    
-    if (errorStr.includes('network') || errorStr.includes('timeout') || errorStr.includes('connection')) {
-      return {
-        category: 'Network Issue',
-        severity: 'medium',
-        suggestion: 'Check internet connection and try again'
-      };
-    }
-    
-    if (errorStr.includes('rate limit') || errorStr.includes('too many requests')) {
-      return {
-        category: 'Rate Limiting',
-        severity: 'low',
-        suggestion: 'Wait a few moments before trying again'
-      };
-    }
-    
-    if (errorStr.includes('api key') || errorStr.includes('unauthorized') || errorStr.includes('authentication')) {
-      return {
-        category: 'Authentication Error',
-        severity: 'high',
-        suggestion: 'Check API key configuration'
-      };
-    }
-    
-    return {
-      category: 'Unknown Error',
-      severity: 'medium',
-      suggestion: 'Please try again or contact support'
+  // Get data source information for tools
+  static getDataSource(toolName) {
+    const sources = {
+      'get_current_weather': 'OpenWeatherMap API',
+      'get_weather_irrigation_advice': 'OpenWeatherMap API',
+      'get_weather_alerts': 'OpenWeatherMap API',
+      'get_market_prices': 'Market Data Service',
+      'get_realtime_market_price': 'Agmarknet Portal',
+      'identify_plant_disease': 'Plant Disease Database',
+      'get_government_schemes': 'Government Schemes Portal'
     };
+    return sources[toolName] || 'Internal Service';
   }
 
-  static getDataSource(toolName) {
-    const sourceMap = {
-      'get_weather_forecast': {
-        source: 'OpenWeather API',
-        reliability: 'high',
-        data_type: 'weather'
-      },
-      'get_market_prices': {
-        source: 'Market Data API',
-        reliability: 'medium',
-        data_type: 'pricing'
-      },
-      'get_agmarknet_prices': {
-        source: 'Agmarknet Official',
-        reliability: 'high',
-        data_type: 'pricing'
-      },
-      'get_weather_alerts': {
-        source: 'Weather Alert API',
-        reliability: 'high',
-        data_type: 'alerts'
-      },
-      'analyze_plant_disease': {
-        source: 'PlantNet AI',
-        reliability: 'medium',
-        data_type: 'analysis'
-      },
-      'get_government_schemes': {
-        source: 'Government Portal',
-        reliability: 'high',
-        data_type: 'schemes'
-      },
-      'get_fertilizer_prices': {
-        source: 'Fertilizer Market API',
-        reliability: 'medium',
-        data_type: 'pricing'
-      }
-    };
+  // Categorize failure reasons for better error handling
+  static categorizeFailure(error) {
+    const errorString = String(error).toLowerCase();
     
-    return sourceMap[toolName] || {
-      source: 'Unknown',
-      reliability: 'unknown',
-      data_type: 'unknown'
+    if (errorString.includes('timeout')) return 'timeout';
+    if (errorString.includes('network')) return 'network_error';
+    if (errorString.includes('unauthorized') || errorString.includes('401')) return 'auth_error';
+    if (errorString.includes('rate limit')) return 'rate_limit';
+    if (errorString.includes('not found') || errorString.includes('404')) return 'not_found';
+    if (errorString.includes('unavailable') || errorString.includes('503')) return 'service_unavailable';
+    
+    return 'unknown_error';
+  }
+}
+
+export default AgentToolsService;
+  }
+
+  // Get data source information for tools
+  static getDataSource(toolName) {
+    const sources = {
+      'get_current_weather': 'OpenWeatherMap API',
+      'get_weather_irrigation_advice': 'OpenWeatherMap API',
+      'get_weather_alerts': 'OpenWeatherMap API',
+      'get_market_prices': 'Market Data Service',
+      'get_realtime_market_price': 'Agmarknet Portal',
+      'identify_plant_disease': 'Plant Disease Database',
+      'get_government_schemes': 'Government Schemes Portal'
     };
+    return sources[toolName] || 'Internal Service';
+  }
+
+  // Categorize failure reasons for better error handling
+  static categorizeFailure(error) {
+    const errorString = String(error).toLowerCase();
+    
+    if (errorString.includes('timeout')) return 'timeout';
+    if (errorString.includes('network')) return 'network_error';
+    if (errorString.includes('unauthorized') || errorString.includes('401')) return 'auth_error';
+    if (errorString.includes('rate limit')) return 'rate_limit';
+    if (errorString.includes('not found') || errorString.includes('404')) return 'not_found';
+    if (errorString.includes('unavailable') || errorString.includes('503')) return 'service_unavailable';
+    
+    return 'unknown_error';
+  }
+            context += `Realtime Price: Data unavailable (${result.error})\n`;
+            break;
+          }
+          // APMC provides per quintal prices; compute per kg approximation
+            const avg = result.result.current?.average;
+            if (avg) {
+              const perKg = (avg / 100).toFixed(2);
+              context += `Realtime Price: ₹${avg} /quintal (≈₹${perKg}/kg) on ${result.result.date} across ${result.result.marketCount} markets (confidence: ${result.result.confidence})\n`;
+            } else {
+              context += `Realtime Price: No average computed on ${result.result.date}\n`;
+            }
+          break;
+
+        case 'get_agmarknet_prices':
+          if (result.success === false) {
+            context += `Agmarknet Price: Data unavailable (${result.error})\n`;
+            break;
+          }
+          if (result.result.priceData?.summary) {
+            const summary = result.result.priceData.summary;
+            const location = result.result.location || summary.state;
+            context += `Agmarknet ${summary.commodity} in ${location}: ₹${summary.currentPrice} ${summary.priceUnit} `;
+            if (summary.trend !== 'stable') {
+              context += `(${summary.trend} ${summary.change > 0 ? '+' : ''}${summary.change}) `;
+            }
+            if (result.result.fallback) {
+              context += `[Mock data - service unavailable] `;
+            }
+            if (result.result.cached) {
+              context += `[Cached] `;
+            }
+            context += `\n`;
+          } else if (result.result.priceData?.rows?.length > 0) {
+            const rows = result.result.priceData.rows;
+            const latestRow = rows[0];
+            const headers = result.result.priceData.headers;
+            const modalPriceIdx = headers.findIndex(h => h.toLowerCase().includes('modal'));
+            if (modalPriceIdx >= 0 && latestRow[modalPriceIdx]) {
+              context += `Agmarknet Price: ₹${latestRow[modalPriceIdx]} (latest data)\n`;
+            }
+          }
+          break;
+
+        case 'get_weather_alerts':
+          if (result.success === false) { 
+            context += `Alerts: No alerts available (${result.error})\n`; 
+            break; 
+          }
+          context += `Alerts: ${result.result.summary}\n`;
+          break;
+
+        case 'analyze_plant_disease':
+          if (result.success === false) { context += `Disease Analysis: FAILED (${result.error})\n`; break; }
+          if (Array.isArray(result.result.analysis.diseases) && result.result.analysis.diseases.length > 0) {
+            context += `Disease Analysis: ${result.result.analysis.diseases[0].name}\n`;
+          }
+          break;
+
+        case 'get_government_schemes':
+          if (result.success === false) { context += `Government Schemes: FAILED (${result.error})\n`; break; }
+          context += `Available Schemes: ${result.result.recommendations.length} schemes applicable\n`;
+          break;
+
+        case 'get_fertilizer_prices':
+          if (result.success === false) { context += `Fertilizer Prices: FAILED (${result.error})\n`; break; }
+          if (result.result.prices.length > 0) {
+            context += `Fertilizer Prices: ${result.result.prices[0].product} - ${result.result.prices[0].price}\n`;
+          }
+          break;
+      }
+    });
+
+    // If both realtime and analytical market data were fetched (rare after suppression), append merged summary
+    const hasRealtime = toolResults.some(r => r.toolName === 'get_realtime_market_price' && r.success);
+    const analytical = toolResults.find(r => r.toolName === 'get_market_prices' && r.success);
+    const realtime = toolResults.find(r => r.toolName === 'get_realtime_market_price' && r.success);
+    if (hasRealtime && analytical) {
+      const delta = analytical.result.trends?.change;
+      const direction = analytical.result.trends?.direction;
+      if (realtime?.result?.current?.average && delta != null) {
+        context += `Price Trend Merge: Latest modal avg ₹${realtime.result.current.average}/quintal; trend ${direction} ${delta}% vs prior period.\n`;
+      }
+    }
+
+  return context.trim();
   }
 }
 

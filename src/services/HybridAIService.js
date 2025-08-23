@@ -85,12 +85,19 @@ class HybridAIService {
       }
       
       // Step 4: Save interaction for future context building
-      if (enhancedContext.farmerId !== 'default') {
-        await FarmerContextService.saveInteraction(
-          enhancedContext.farmerId, 
-          query, 
-          response?.message || response?.advice || 'No response'
-        );
+        // Apply response style rules (concise, empathetic, proactive)
+        try {
+          response = this.applyResponseStyle(response, query, enhancedContext, queryIntent);
+        } catch (err) {
+          console.warn('Response styling failed, returning original response:', err?.message);
+        }
+
+        if (enhancedContext.farmerId !== 'default') {
+          await FarmerContextService.saveInteraction(
+            enhancedContext.farmerId,
+            query,
+            response?.message || response?.advice || 'No response'
+          );
         
         // Save to project-specific history if active project
         if (userContext.activeProjectId && response) {
@@ -221,6 +228,64 @@ class HybridAIService {
       queryLength: query.length,
       timestamp: new Date().toISOString()
     };
+  }
+
+  // Post-process responses to enforce: concise direct answer, empathetic tone, and one proactive next step
+  applyResponseStyle(response = {}, originalQuery = '', farmerContext = {}, queryIntent = {}) {
+    try {
+      if (!response) return response;
+
+      // Ensure we have a primary text field
+      const primary = response.message || response.advice || response.text || '';
+      let trimmed = String(primary).trim();
+
+      // If the response is long, keep only the first 2 sentences for brevity
+      if (trimmed.split(/[\.\!\?]\s/).length > 2) {
+        const parts = trimmed.split(/([\.\!\?])\s/); // keep sentence delimiters
+        // Reconstruct first two sentences
+        let sentenceCount = 0;
+        let concise = '';
+        for (let i = 0; i < parts.length; i++) {
+          concise += parts[i];
+          if (/([\.\!\?])$/.test(parts[i])) sentenceCount++;
+          if (sentenceCount >= 2) break;
+        }
+        trimmed = concise.trim();
+      }
+
+      // Empathetic prefix if the query is personalized
+      const isPersonal = this.isPersonalizedQuery(originalQuery, farmerContext);
+      const empathy = isPersonal ? `I understand — ` : '';
+
+      // Proactive single next-step suggestion based on queryIntent
+      let nextStep = '';
+      if (queryIntent && Array.isArray(queryIntent.toolsNeeded) && queryIntent.toolsNeeded.includes('market_data')) {
+        nextStep = 'Check the latest local market price to decide when to sell.';
+      } else if (queryIntent && Array.isArray(queryIntent.toolsNeeded) && queryIntent.toolsNeeded.includes('weather')) {
+        nextStep = 'Keep an eye on the next 48-hour rainfall forecast.';
+      } else if (queryIntent && Array.isArray(queryIntent.toolsNeeded) && queryIntent.toolsNeeded.includes('plant_disease')) {
+        nextStep = 'Inspect the affected plants and, if possible, share clear photos for a quick diagnosis.';
+      } else if (!nextStep) {
+        nextStep = 'If you want, I can provide step-by-step actions or fetch recent data.';
+      }
+
+      // Compose final message: empathy + concise answer + proactive step
+      const finalMessage = `${empathy}${trimmed} ${nextStep}`.trim();
+
+      // Update response fields in place while preserving metadata
+      const styled = {
+        ...response,
+        message: finalMessage,
+        advice: finalMessage,
+        styled: true,
+        styleMeta: { concise: true, empathetic: !!empathy, proactive: true }
+      };
+
+      return styled;
+    } catch (err) {
+      console.warn('applyResponseStyle error:', err?.message);
+      return response;
+    }
   }
 
   // Check if query is farmer-specific and needs personalized response
@@ -621,22 +686,26 @@ class HybridAIService {
         });
       }
 
-      // Step 2: Understanding Phase
-      await ReasoningAnimationService.animateUnderstanding(reasoningCallback, englishQuery);
-
-      // Step 3: Tools Phase
-  const AgentToolsService = (await import('./AgentToolsService')).default;
-  if (!reqId) {
-    reqId = await TelemetryService.startRequest({ query: englishQuery, language, location, mode: 'reasoning' });
-    TelemetryService.classify({ reqId, intent: queryIntent.type, confidence: queryIntent.confidence, toolsNeeded: queryIntent.toolsNeeded });
-  }
-  const toolResults = await AgentToolsService.processQueryWithTools(englishQuery, userContext);
+      // Step 2: Use Dynamic Reasoning Service instead of static animation
+      const DynamicReasoningService = (await import('./DynamicReasoningService')).default;
       
-      const toolsUsed = toolResults?.toolsUsed || [];
-      await ReasoningAnimationService.animateToolsPhase(reasoningCallback, toolsUsed);
-
-      // Step 4: Reasoning Phase
-      await ReasoningAnimationService.animateReasoning(reasoningCallback, 'Agricultural Reasoning');
+      // Get tools and execute them first to have real data for reasoning
+      const AgentToolsService = (await import('./AgentToolsService')).default;
+      if (!reqId) {
+        reqId = await TelemetryService.startRequest({ query: englishQuery, language, location, mode: 'reasoning' });
+        TelemetryService.classify({ reqId, intent: queryIntent.type, confidence: queryIntent.confidence, toolsNeeded: queryIntent.toolsNeeded });
+      }
+      
+      // Execute tools to get real data
+      const toolResults = await AgentToolsService.processQueryWithTools(englishQuery, userContext);
+      
+      // Execute dynamic reasoning with real tool results
+      const analysisResult = await DynamicReasoningService.executeDynamicReasoning(
+        englishQuery, 
+        userContext, 
+        toolResults?.toolResults || [], // Extract the actual array from the result object
+        reasoningCallback
+      );
 
       let enhancedPrompt = englishQuery;
       

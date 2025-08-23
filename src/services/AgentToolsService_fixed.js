@@ -676,7 +676,7 @@ class AgentToolsService {
             params.cropType = cropFromQuery;
             params.crops = [cropFromQuery];
           } else {
-            // Use a sensible default for Indian farmers
+            // Use rice as default for Indian farmers
             params.cropType = "rice";
             params.crops = ["rice"];
           }
@@ -685,20 +685,16 @@ class AgentToolsService {
 
       case 'get_market_prices':
         // Extract commodity from query or user context
-        const commodities = ['wheat', 'rice', 'cotton', 'sugarcane', 'onion', 'potato', 'tomato', 'chilli', 'mirchi', 'maize', 'tur', 'gram', 'soybean'];
-        const foundCommodity = commodities.find(c => query.toLowerCase().includes(c.toLowerCase()));
-        // Prioritize user's actual crop over defaults
-        const userCrop = userContext.crops?.[0]?.toLowerCase();
-        params.commodity = foundCommodity || userCrop || 'wheat';
+        const commodities = ['wheat', 'rice', 'cotton', 'sugarcane', 'onion', 'potato', 'tomato'];
+        const foundCommodity = commodities.find(c => query.toLowerCase().includes(c));
+        params.commodity = foundCommodity || userContext.crops?.[0] || 'wheat';
         params.location = userContext.location || '';
         break;
 
       case 'get_realtime_market_price': {
-        const commodities = ['wheat', 'rice', 'cotton', 'sugarcane', 'onion', 'potato', 'tomato', 'maize', 'tur', 'gram', 'soybean', 'chilli', 'mirchi'];
-        const foundCommodity = commodities.find(c => query.toLowerCase().includes(c.toLowerCase()));
-        // Prioritize user's actual crop over defaults
-        const userCrop = userContext.crops?.[0]?.toLowerCase();
-        params.commodity = foundCommodity || userCrop || 'wheat';
+        const commodities = ['wheat', 'rice', 'cotton', 'sugarcane', 'onion', 'potato', 'tomato', 'maize', 'tur', 'gram', 'soybean'];
+        const foundCommodity = commodities.find(c => query.toLowerCase().includes(c));
+        params.commodity = foundCommodity || userContext.crops?.[0] || 'wheat';
         // Attempt to parse optional variety tokens like 'basmati', 'sona masuri'
         const varietyMatches = query.match(/(basmati|sona\s*masuri|ir64|sharbati|hybrid|desi)/i);
         if (varietyMatches) params.variety = varietyMatches[1];
@@ -708,11 +704,9 @@ class AgentToolsService {
         break; }
 
       case 'get_agmarknet_prices': {
-        const commodities = ['wheat', 'rice', 'cotton', 'sugarcane', 'onion', 'potato', 'tomato', 'maize', 'tur', 'gram', 'soybean', 'turmeric', 'chilli', 'coriander', 'groundnut', 'mirchi'];
-        const foundCommodity = commodities.find(c => query.toLowerCase().includes(c.toLowerCase()));
-        // Prioritize user's actual crop over defaults
-        const userCrop = userContext.crops?.[0]?.toLowerCase();
-        params.commodity = foundCommodity || userCrop || 'wheat';
+        const commodities = ['wheat', 'rice', 'cotton', 'sugarcane', 'onion', 'potato', 'tomato', 'maize', 'tur', 'gram', 'soybean', 'turmeric', 'chilli', 'coriander', 'groundnut'];
+        const foundCommodity = commodities.find(c => query.toLowerCase().includes(c));
+        params.commodity = foundCommodity || userContext.crops?.[0] || 'wheat';
         
         // Extract state from query or user context
         const extractedState = this.extractLocationFromQuery(query) || userContext.location;
@@ -741,9 +735,7 @@ class AgentToolsService {
         break; }
 
       case 'analyze_plant_disease':
-        // Prioritize user's actual crop for disease analysis
-        const userCropForDisease = userContext.crops?.[0] || this.extractCropFromQuery(query) || 'wheat';
-        params.cropType = userCropForDisease;
+        params.cropType = userContext.crops?.[0] || 'wheat';
         params.symptoms = this.extractSymptomsFromQuery(query);
         params.imageAvailable = false;
         break;
@@ -818,7 +810,7 @@ class AgentToolsService {
   static extractCropFromQuery(query) {
     const queryLower = query.toLowerCase();
     
-    // Common crops in India with aliases
+    // Common crops in India
     const crops = [
       'wheat', 'rice', 'cotton', 'sugarcane', 'maize', 'barley', 'jowar', 'bajra',
       'ragi', 'oats', 'gram', 'tur', 'moong', 'urad', 'masoor', 'arhar', 'chana',
@@ -827,26 +819,11 @@ class AgentToolsService {
       'coffee', 'tea', 'rubber', 'jute', 'mesta', 'tobacco', 'potato', 'onion',
       'tomato', 'brinjal', 'okra', 'cabbage', 'cauliflower', 'peas', 'beans',
       'carrot', 'radish', 'beetroot', 'spinach', 'fenugreek', 'coriander', 'turmeric',
-      'ginger', 'garlic', 'chilli', 'mirchi', 'black pepper', 'cardamom', 'cinnamon', 'clove',
+      'ginger', 'garlic', 'chilli', 'black pepper', 'cardamom', 'cinnamon', 'clove',
       'nutmeg', 'mango', 'banana', 'orange', 'apple', 'grapes', 'pomegranate',
       'guava', 'papaya', 'pineapple', 'watermelon', 'muskmelon', 'cucumber'
     ];
     
-    // Handle common aliases
-    const aliases = {
-      'chili': 'chilli',
-      'pepper': 'chilli',  // when context suggests chilli pepper
-      'hot pepper': 'chilli'
-    };
-    
-    // Check aliases first
-    for (const [alias, actualCrop] of Object.entries(aliases)) {
-      if (queryLower.includes(alias)) {
-        return actualCrop;
-      }
-    }
-    
-    // Check main crop names
     for (const crop of crops) {
       if (queryLower.includes(crop)) {
         return crop;

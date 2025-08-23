@@ -175,11 +175,52 @@ class MarketDataService {
       clearTimeout(timeoutId);
       if (!res.ok) throw new Error(`APMC realtime status ${res.status}`);
       const json = await res.json();
-      const rows = (json.records || []).filter(r => r.modal_price);
-      if (!rows.length) return { success: false, error: 'No price rows returned', commodity: normalized };
+
+      // Normalize candidate records and be tolerant of different price field names
+      const rawRecords = Array.isArray(json.records) ? json.records : [];
+
+      const pickPriceField = (rec) => {
+        // Try common fields in order
+        return rec.modal_price ?? rec.modal_price_in_rs ?? rec.modal_price_rs ?? rec.price ?? rec.modal ?? rec.max_price ?? rec.min_price ?? null;
+      };
+
+      const rows = rawRecords.filter(r => {
+        const p = pickPriceField(r);
+        return p !== null && p !== undefined && String(p).trim() !== '';
+      }).map(r => ({ ...r, _picked_price: pickPriceField(r) }));
+
+      // If no rows found from the realtime endpoint, attempt APMC API as a fallback
+      if (!rows.length) {
+        console.warn('Realtime endpoint returned no price rows; attempting APMC API fallback');
+        try {
+          const apmc = await this.getAPMCPrices(commodity, state, market, { noCache: true, limit });
+          if (apmc && apmc.success && Array.isArray(apmc.data) && apmc.data.length) {
+            // Use the APMC records as a fallback data source
+            const fallbackRaw = apmc.data;
+            const fallbackRows = fallbackRaw.filter(r => pickPriceField(r) !== null).map(r => ({ ...r, _picked_price: pickPriceField(r) }));
+            if (fallbackRows.length) {
+              // Use fallbackRows for subsequent processing
+              filtered = fallbackRows;
+            }
+          }
+        } catch (fallbackErr) {
+          console.warn('APMC fallback failed:', fallbackErr?.message || fallbackErr);
+        }
+      }
+
+      // If we still don't have rows after fallback, provide diagnostics and fail
+      let filtered = rows;
+      if (!filtered || filtered.length === 0) {
+        const sampleCount = rawRecords.length;
+        return { success: false, error: 'No price rows returned', commodity: normalized, diagnostics: { sampleCount, rawSample: rawRecords.slice(0,3) } };
+      }
 
       // Filter by variety if requested (case-insensitive substring)
-      let filtered = rows;
+      if (variety) {
+        const vLower = variety.toLowerCase();
+        const match = filtered.filter(r => (r.variety || r.commodity_variety || '').toLowerCase().includes(vLower));
+        if (match.length) filtered = match;
+      }
       if (variety) {
         const vLower = variety.toLowerCase();
         const match = rows.filter(r => (r.variety || '').toLowerCase().includes(vLower));
@@ -191,7 +232,12 @@ class MarketDataService {
       const latestDate = filtered[0].arrival_date;
       const latest = filtered.filter(r => r.arrival_date === latestDate);
 
-      const priceNums = latest.map(r => parseFloat(r.modal_price)).filter(p=>p>0);
+      // Extract numeric modal prices using the picked field first, then modal_price
+      const priceNums = latest.map(r => {
+        const candidate = r._picked_price ?? r.modal_price ?? r.price ?? r.modal;
+        const num = parseFloat(String(candidate).replace(/,/g, ''));
+        return isNaN(num) ? 0 : num;
+      }).filter(p => p > 0);
       const avg = priceNums.reduce((s,p)=>s+p,0)/priceNums.length;
       const min = Math.min(...priceNums);
       const max = Math.max(...priceNums);
