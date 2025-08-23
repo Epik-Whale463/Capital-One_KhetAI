@@ -45,10 +45,10 @@ class AutonomousAgentService {
         try {
             // Import standardized animation service
             const ReasoningAnimationService = (await import('./ReasoningAnimationService')).default;
-            
+
             // Create standardized callback with progress tracking
             const reasoningCallback = ReasoningAnimationService.createProgressCallback(
-                context.onReasoningStep, 
+                context.onReasoningStep,
                 5 // Total steps: Reason, Act, Observe, Reflect, Respond
             );
 
@@ -72,9 +72,9 @@ class AutonomousAgentService {
                 status: ReasoningAnimationService.PHASES.ACTIVE,
                 icon: ReasoningAnimationService.ICONS.REASONING
             });
-            
+
             const planningResult = await this.reasonAndPlan(query, thread, reasoningCallback);
-            
+
             reasoningCallback({
                 id: 'reason',
                 title: 'Reasoning Complete',
@@ -92,9 +92,9 @@ class AutonomousAgentService {
                 status: ReasoningAnimationService.PHASES.ACTIVE,
                 icon: ReasoningAnimationService.ICONS.TOOLS
             });
-            
+
             const executionResult = await this.executeActions(planningResult.plan, context, reasoningCallback);
-            
+
             reasoningCallback({
                 id: 'execute',
                 title: 'Actions Complete',
@@ -112,9 +112,9 @@ class AutonomousAgentService {
                 status: ReasoningAnimationService.PHASES.ACTIVE,
                 icon: ReasoningAnimationService.ICONS.ANALYSIS
             });
-            
+
             const observationResult = await this.observeAndAnalyze(executionResult, reasoningCallback);
-            
+
             reasoningCallback({
                 id: 'observe',
                 title: 'Analysis Complete',
@@ -132,9 +132,9 @@ class AutonomousAgentService {
                 status: ReasoningAnimationService.PHASES.ACTIVE,
                 icon: '🎯'
             });
-            
+
             const reflectionResult = await this.reflectAndLearn(observationResult, thread, reasoningCallback);
-            
+
             reasoningCallback({
                 id: 'reflect',
                 title: 'Reflection Complete',
@@ -146,7 +146,7 @@ class AutonomousAgentService {
 
             // Step 5: RESPOND - Generate final response
             await ReasoningAnimationService.animateResponse(reasoningCallback, 'Crafting Response');
-            
+
             const response = await this.generateFinalResponse(reflectionResult, reasoningCallback);
 
             // Update conversation history
