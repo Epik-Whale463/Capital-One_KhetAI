@@ -65,9 +65,9 @@ const registry = new ToolRegistry();
 class AgentToolsService {
   // Define tools in LangChain.js format
   static getAvailableTools() {
-  // If already registered (hot reload safe), return list
-  if (registry.list().length) return registry.list();
-  const definitions = [
+    // If already registered (hot reload safe), return list
+    if (registry.list().length) return registry.list();
+    const definitions = [
       {
         name: "get_current_weather",
         description: "Get current weather conditions and forecast for farming location",
@@ -86,7 +86,7 @@ class AgentToolsService {
             try {
               const geo = await WeatherToolsService.geocodePlace(locationName);
               if (geo.success) {
-                latitude = geo.lat; 
+                latitude = geo.lat;
                 longitude = geo.lon;
               } else {
                 console.log(`⚠️ Geocoding failed for ${locationName}, using Delhi as fallback`);
@@ -100,14 +100,14 @@ class AgentToolsService {
               longitude = 77.2090;
             }
           }
-          
+
           // Final fallback if still no coordinates
           if (latitude == null || longitude == null) {
             console.log(`⚠️ No coordinates available, using Delhi as default location`);
             latitude = 28.6139;
             longitude = 77.2090;
           }
-          
+
           const result = await WeatherToolsService.getAgricultureWeather(latitude, longitude);
           if (!result.success) {
             throw new Error(`Current weather unavailable: ${result.error}`);
@@ -142,7 +142,7 @@ class AgentToolsService {
             try {
               const geo = await WeatherToolsService.geocodePlace(locationName);
               if (geo.success) {
-                latitude = geo.lat; 
+                latitude = geo.lat;
                 longitude = geo.lon;
               } else {
                 console.log(`⚠️ Geocoding failed for ${locationName}, using Delhi as fallback`);
@@ -155,14 +155,14 @@ class AgentToolsService {
               longitude = 77.2090;
             }
           }
-          
+
           // Final fallback if still no coordinates
           if (latitude == null || longitude == null) {
             console.log(`⚠️ No coordinates available, using Delhi as default location`);
             latitude = 28.6139;
             longitude = 77.2090;
           }
-          
+
           const result = await WeatherToolsService.getIrrigationAdvice(latitude, longitude, cropType, soilType);
           if (!result.success) {
             throw new Error(`Weather service unavailable: ${result.error}`);
@@ -194,7 +194,7 @@ class AgentToolsService {
             try {
               const geo = await WeatherToolsService.geocodePlace(locationName);
               if (geo.success) {
-                latitude = geo.lat; 
+                latitude = geo.lat;
                 longitude = geo.lon;
               } else {
                 console.log(`⚠️ Geocoding failed for ${locationName}, using Delhi as fallback`);
@@ -207,14 +207,14 @@ class AgentToolsService {
               longitude = 77.2090;
             }
           }
-          
+
           // Final fallback if still no coordinates
           if (latitude == null || longitude == null) {
             console.log(`⚠️ No coordinates available, using Delhi as default location`);
             latitude = 28.6139;
             longitude = 77.2090;
           }
-          
+
           const result = await WeatherToolsService.getFarmingAlerts(latitude, longitude, crops);
           if (!result.success) {
             throw new Error(`Weather alerts unavailable: ${result.error}`);
@@ -256,7 +256,7 @@ class AgentToolsService {
       {
         name: "get_realtime_market_price",
         description: "Fetch latest-day modal/min/max prices across markets for a commodity (APMC realtime)",
-        timeoutMs: 10000, // 10 second timeout for market data
+        timeoutMs: 20000, // 20 second timeout for government APIs
         parameters: {
           type: "object",
           properties: {
@@ -347,11 +347,11 @@ class AgentToolsService {
             GovernmentSchemesService.getAllSchemeInfo(),
             Promise.resolve(GovernmentSchemesService.getSchemeRecommendations(farmerProfile))
           ]);
-          
+
           if (!schemesResult.success) {
             throw new Error(`Government schemes data unavailable: ${schemesResult.error}`);
           }
-          
+
           return {
             availableSchemes: schemesResult.schemes,
             recommendations: recommendations,
@@ -378,9 +378,9 @@ class AgentToolsService {
           if (!result.success) {
             throw new Error(`Plant disease analysis unavailable: ${result.error}`);
           }
-          
+
           const preventiveMeasures = PlantDiseaseService.getPreventiveMeasures(cropType);
-          
+
           return {
             analysis: result.analysis,
             preventiveMeasures: preventiveMeasures,
@@ -403,14 +403,14 @@ class AgentToolsService {
           if (!result.success) {
             throw new Error(`Fertilizer price data unavailable: ${result.error}`);
           }
-          
+
           let filteredPrices = result.data.prices;
           if (fertilizerType) {
-            filteredPrices = result.data.prices.filter(price => 
+            filteredPrices = result.data.prices.filter(price =>
               price.product.toLowerCase().includes(fertilizerType.toLowerCase())
             );
           }
-          
+
           return {
             prices: filteredPrices,
             source: "IFFCO website"
@@ -418,9 +418,9 @@ class AgentToolsService {
         }
       }
     ];
-  // Register in registry
-  for (const def of definitions) registry.register(def);
-  return registry.list();
+    // Register in registry
+    for (const def of definitions) registry.register(def);
+    return registry.list();
   }
 
   // Execute tool by name with parameters
@@ -464,9 +464,10 @@ class AgentToolsService {
     const onlyTemporal = genericTemporalWords.some(k => queryLower.includes(k)) && !mentionsCoreWeather && !mentionsIrrigation && !mentionsAlert;
     const hasTemperaturePattern = /(\d+)\s*(degree|celsius|fahrenheit|°)/i.test(queryLower);
 
-    // If query is about prices, schemes, fertilizer etc, suppress incidental weather trigger
+    // Only suppress weather tools if query is ONLY about non-weather domains and doesn't explicitly mention weather
     const nonWeatherDomains = ['price', 'market', 'scheme', 'subsidy', 'fertilizer', 'disease', 'pest'];
-    const clearlyNonWeather = nonWeatherDomains.some(k => queryLower.includes(k));
+    const hasNonWeatherTerms = nonWeatherDomains.some(k => queryLower.includes(k));
+    const clearlyNonWeather = hasNonWeatherTerms && !mentionsCoreWeather && !mentionsIrrigation && !mentionsAlert;
 
     if (!clearlyNonWeather) {
       // Decide minimal weather tools
@@ -503,10 +504,10 @@ class AgentToolsService {
     // Market and price related
     const priceKeywords = ['price', 'market rate', 'mandi', 'bhav', 'rate', 'sell', 'buy'];
     // Check for Agmarknet-specific queries
-    const wantsAgmarknet = queryLower.includes('agmarknet') || queryLower.includes('agmark') || 
-                          queryLower.includes('detailed price') || queryLower.includes('official price') ||
-                          queryLower.includes('government price') || queryLower.includes('district price') ||
-                          /market\s+wise|district\s+wise|mandi\s+wise/i.test(queryLower);
+    const wantsAgmarknet = queryLower.includes('agmarknet') || queryLower.includes('agmark') ||
+      queryLower.includes('detailed price') || queryLower.includes('official price') ||
+      queryLower.includes('government price') || queryLower.includes('district price') ||
+      /market\s+wise|district\s+wise|mandi\s+wise/i.test(queryLower);
     // Broaden realtime detection: allow up to 3 intermediary words (e.g., "current market modal price")
     const wantsRealtime = /(today|current|latest|right\s*now)\s+(?:[a-z]+\s+){0,3}?(price|rate|bhav)/i.test(queryLower) || queryLower.includes('mandi price') || queryLower.includes('mandi rate');
     const mentionsPrice = priceKeywords.some(k => queryLower.includes(k));
@@ -542,9 +543,9 @@ class AgentToolsService {
     }
 
     // Disease and pest related
-    if (queryLower.includes('disease') || queryLower.includes('pest') || 
-        queryLower.includes('spots') || queryLower.includes('yellowing') ||
-        queryLower.includes('wilting') || queryLower.includes('problem')) {
+    if (queryLower.includes('disease') || queryLower.includes('pest') ||
+      queryLower.includes('spots') || queryLower.includes('yellowing') ||
+      queryLower.includes('wilting') || queryLower.includes('problem')) {
       suggestedTools.push({
         name: 'analyze_plant_disease',
         reason: 'Query mentions plant health issues'
@@ -552,9 +553,9 @@ class AgentToolsService {
     }
 
     // Government schemes and subsidies
-    if (queryLower.includes('scheme') || queryLower.includes('subsidy') || 
-        queryLower.includes('government') || queryLower.includes('pm-kisan') ||
-        queryLower.includes('loan') || queryLower.includes('credit')) {
+    if (queryLower.includes('scheme') || queryLower.includes('subsidy') ||
+      queryLower.includes('government') || queryLower.includes('pm-kisan') ||
+      queryLower.includes('loan') || queryLower.includes('credit')) {
       suggestedTools.push({
         name: 'get_government_schemes',
         reason: 'Query mentions government benefits or schemes'
@@ -562,8 +563,8 @@ class AgentToolsService {
     }
 
     // Fertilizer related
-    if (queryLower.includes('fertilizer') || queryLower.includes('urea') || 
-        queryLower.includes('dap') || queryLower.includes('npk')) {
+    if (queryLower.includes('fertilizer') || queryLower.includes('urea') ||
+      queryLower.includes('dap') || queryLower.includes('npk')) {
       suggestedTools.push({
         name: 'get_fertilizer_prices',
         reason: 'Query mentions fertilizers'
@@ -578,17 +579,17 @@ class AgentToolsService {
     try {
       console.log(`🔍 Processing query with tools: "${query}"`);
       console.log(`🔍 User context:`, userContext);
-      
+
       // Analyze query to determine relevant tools
       const suggestedTools = this.analyzeQueryForTools(query, userContext);
-      
+
       if (suggestedTools.length === 0) {
         console.log(`❌ No tools suggested for query: "${query}"`);
-  // No tools needed, return null to let the AI reasoning service handle normally
+        // No tools needed, return null to let the AI reasoning service handle normally
         return null;
       }
 
-      console.log(`🔍 Query analysis suggests ${suggestedTools.length} tools:`, 
+      console.log(`🔍 Query analysis suggests ${suggestedTools.length} tools:`,
         suggestedTools.map(t => t.name));
 
       // Execute relevant tools
@@ -620,7 +621,7 @@ class AgentToolsService {
       }
 
       console.log(`🔍 Tools result: ${toolResults.length} tools executed`);
-      
+
       const enhancedContext = this.buildEnhancedContext(toolResults);
       console.log(`📋 Enhanced query with ${toolResults.length} tools: ${toolResults.map(r => r.toolName).join(', ')}`);
 
@@ -633,7 +634,7 @@ class AgentToolsService {
 
     } catch (error) {
       console.error('Tool processing error:', error);
-  return null; // Fallback to normal AI reasoning processing
+      return null; // Fallback to normal AI reasoning processing
     }
   }
 
@@ -661,7 +662,7 @@ class AgentToolsService {
             return { skip: true, reason: 'No location or coordinates supplied for weather-based tool' };
           }
         }
-        
+
         // Extract crop information - prioritize farmer context
         if (userContext.farmerContext?.crops && userContext.farmerContext.crops.length > 0) {
           params.cropType = userContext.farmerContext.crops[0];
@@ -681,7 +682,8 @@ class AgentToolsService {
             params.crops = ["rice"];
           }
         }
-        break; }
+        break;
+      }
 
       case 'get_market_prices':
         // Extract commodity from query or user context
@@ -705,31 +707,37 @@ class AgentToolsService {
         // Extract a state if present
         const loc = this.extractLocationFromQuery(query);
         if (loc) params.state = loc;
-        break; }
+        break;
+      }
 
       case 'get_agmarknet_prices': {
         const commodities = ['wheat', 'rice', 'cotton', 'sugarcane', 'onion', 'potato', 'tomato', 'maize', 'tur', 'gram', 'soybean', 'turmeric', 'chilli', 'coriander', 'groundnut', 'mirchi'];
         const foundCommodity = commodities.find(c => query.toLowerCase().includes(c.toLowerCase()));
         // Prioritize user's actual crop over defaults
         const userCrop = userContext.crops?.[0]?.toLowerCase();
-        params.commodity = foundCommodity || userCrop || 'wheat';
-        
+        // Map chilli to mirchi for better market data
+        const mappedUserCrop = userCrop === 'chilli' ? 'mirchi' : userCrop;
+        params.commodity = foundCommodity || mappedUserCrop || 'rice';
+
         // Extract state from query or user context
         const extractedState = this.extractLocationFromQuery(query) || userContext.location;
         params.state = extractedState || 'Andhra Pradesh'; // Default state
-        
+
         // Try to extract district if mentioned in query
         const districtMatch = query.match(/district[:\s]+([a-z\s]+)|([a-z\s]+)\s+district/i);
         if (districtMatch) {
           params.district = (districtMatch[1] || districtMatch[2]).trim();
         }
-        
+
         // Try to extract market if mentioned in query
         const marketMatch = query.match(/market[:\s]+([a-z\s]+)|([a-z\s]+)\s+market/i);
         if (marketMatch) {
           params.market = (marketMatch[1] || marketMatch[2]).trim();
+        } else {
+          // Don't set market parameter if not specifically mentioned
+          params.market = '';
         }
-        
+
         // Extract dates if mentioned, otherwise use today
         const dateMatch = query.match(/(\d{1,2}[-\/]\w{3}[-\/]\d{4})/i);
         if (dateMatch) {
@@ -737,8 +745,9 @@ class AgentToolsService {
           params.dateTo = dateMatch[1];
         }
         // If no specific date mentioned, the service will default to today
-        
-        break; }
+
+        break;
+      }
 
       case 'analyze_plant_disease':
         // Prioritize user's actual crop for disease analysis
@@ -769,7 +778,7 @@ class AgentToolsService {
   // Helper methods
   static extractLocationFromQuery(query) {
     const queryLower = query.toLowerCase();
-    
+
     // Common Indian cities and states
     const locations = [
       'delhi', 'mumbai', 'bangalore', 'chennai', 'kolkata', 'hyderabad', 'pune', 'ahmedabad',
@@ -805,19 +814,19 @@ class AgentToolsService {
       'uttarakhand', 'himachal pradesh', 'tripura', 'meghalaya', 'manipur', 'nagaland',
       'goa', 'arunachal pradesh', 'mizoram', 'sikkim'
     ];
-    
+
     for (const location of locations) {
       if (queryLower.includes(location)) {
         return location.charAt(0).toUpperCase() + location.slice(1);
       }
     }
-    
+
     return null;
   }
 
   static extractCropFromQuery(query) {
     const queryLower = query.toLowerCase();
-    
+
     // Common crops in India with aliases
     const crops = [
       'wheat', 'rice', 'cotton', 'sugarcane', 'maize', 'barley', 'jowar', 'bajra',
@@ -831,28 +840,28 @@ class AgentToolsService {
       'nutmeg', 'mango', 'banana', 'orange', 'apple', 'grapes', 'pomegranate',
       'guava', 'papaya', 'pineapple', 'watermelon', 'muskmelon', 'cucumber'
     ];
-    
+
     // Handle common aliases
     const aliases = {
       'chili': 'chilli',
       'pepper': 'chilli',  // when context suggests chilli pepper
       'hot pepper': 'chilli'
     };
-    
+
     // Check aliases first
     for (const [alias, actualCrop] of Object.entries(aliases)) {
       if (queryLower.includes(alias)) {
         return actualCrop;
       }
     }
-    
+
     // Check main crop names
     for (const crop of crops) {
       if (queryLower.includes(crop)) {
         return crop;
       }
     }
-    
+
     return null;
   }
 
@@ -890,38 +899,64 @@ class AgentToolsService {
       console.log(`🌡️ Building context for ${result.toolName}:`, result.success ? result.result : result.error);
       switch (result.toolName) {
         case 'get_current_weather':
-          if (result.success === false) { 
-            context += `Current Weather: Data unavailable (${result.error})\n`; 
-            break; 
+          if (result.success === false) {
+            context += `Current Weather: Data unavailable (${result.error})\n`;
+            break;
           }
-          context += `Current Weather: ${Math.round(result.result.current.temp)}°C, ${result.result.current.weather[0].description}. `;
-          context += `${result.result.current.humidity}% humidity wind ${Math.round(result.result.current.wind_speed * 3.6)} km/h\n`;
-          if (result.result.forecast && result.result.forecast.length > 0) {
-            context += `Tomorrow up to ${Math.round(result.result.forecast[0].temp)}°C\n`;
+
+          // Format weather data as structured text
+          context += `**Current Weather:**\n`;
+          context += `- Temperature: ${Math.round(result.result.current.temp)}°C\n`;
+          context += `- Condition: ${result.result.current.weather[0].description}\n`;
+          context += `- Humidity: ${result.result.current.humidity}%\n`;
+          context += `- Wind Speed: ${Math.round(result.result.current.wind_speed * 3.6)} km/h\n`;
+
+          // Add forecast if available
+          if (result.result.daily && result.result.daily.length > 0) {
+            context += `\n**5-Day Forecast:**\n`;
+            result.result.daily.slice(0, 5).forEach((day, index) => {
+              const date = new Date(day.dt * 1000).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' });
+              const rainfall = day.rain?.['1h'] ? `${Math.round(day.rain['1h'])}mm` : '0mm';
+              context += `${index + 1}. **${date}**: ${Math.round(day.temp.max)}°C/${Math.round(day.temp.min)}°C, ${day.weather[0].description}`;
+              if (rainfall !== '0mm') context += ` (${rainfall} rain)`;
+              context += `\n`;
+            });
           }
+          context += `\n`;
           break;
 
         case 'get_weather_irrigation_advice':
-          if (result.success === false) { 
-            context += `Irrigation: Data unavailable (${result.error})\n`; 
-            break; 
+          if (result.success === false) {
+            context += `Irrigation: Data unavailable (${result.error})\n`;
+            break;
           }
           context += `Irrigation: ${result.result.recommendation.message} `;
           context += `(${result.result.recommendation.waterAmount}mm needed)\n`;
           break;
 
         case 'get_market_prices':
-          if (result.success === false) { 
-            context += `Market Prices: Data unavailable (${result.error})\n`; 
-            break; 
+          if (result.success === false) {
+            context += `Market Prices: Data unavailable (${result.error})\n`;
+            break;
           }
-          context += `Market: ₹${result.result.currentPrices.average} avg, `;
-          context += `${result.result.trends.direction} ${result.result.trends.change}%\n`;
+
+          // Format market data as structured text
+          context += `**Market Prices:**\n`;
+          context += `- Average Price: ₹${result.result.currentPrices.average}/quintal\n`;
+          context += `- Trend: ${result.result.trends.direction} ${result.result.trends.change}%\n`;
+          if (result.result.currentPrices.min && result.result.currentPrices.max) {
+            context += `- Price Range: ₹${result.result.currentPrices.min} - ₹${result.result.currentPrices.max}\n`;
+          }
+          context += `\n`;
           break;
 
         case 'get_realtime_market_price':
           if (result.success === false) {
-            context += `Agmarknet Prices: Data unavailable (${result.error})\n`;
+            context += `Agmarknet Prices: Data unavailable (${result.error})`;
+            if (result.attempts) {
+              context += ` after ${result.attempts} attempts`;
+            }
+            context += `. Using general market knowledge for price guidance.\n`;
             break;
           }
           context += `Agmarknet: Latest prices retrieved for verification\n`;
@@ -960,7 +995,7 @@ class AgentToolsService {
   static buildEnhancedContextWithConflicts(toolResults) {
     const baseContext = this.buildEnhancedContext(toolResults);
     const conflicts = this.detectDataConflicts(toolResults);
-    
+
     if (conflicts.length > 0) {
       let conflictNote = "\n\nData Conflicts Detected:\n";
       conflicts.forEach(conflict => {
@@ -968,13 +1003,13 @@ class AgentToolsService {
       });
       return baseContext + conflictNote;
     }
-    
+
     return baseContext;
   }
 
   static detectDataConflicts(toolResults) {
     const conflicts = [];
-    
+
     // Check for conflicting weather data
     const weatherResults = toolResults.filter(r => r.tool === 'get_weather_forecast');
     if (weatherResults.length > 1) {
@@ -987,7 +1022,7 @@ class AgentToolsService {
         });
       }
     }
-    
+
     // Check for conflicting price data
     const priceResults = toolResults.filter(r => r.tool === 'get_market_prices' || r.tool === 'get_agmarknet_prices');
     if (priceResults.length > 1) {
@@ -1000,7 +1035,7 @@ class AgentToolsService {
         });
       }
     }
-    
+
     // Check for failed tool executions
     const failedTools = toolResults.filter(r => r.success === false);
     if (failedTools.length > 0) {
@@ -1009,13 +1044,13 @@ class AgentToolsService {
         description: `${failedTools.length} tools failed: ${failedTools.map(t => t.tool).join(', ')}`
       });
     }
-    
+
     return conflicts;
   }
 
   static categorizeFailure(error) {
     const errorStr = error?.toString().toLowerCase() || '';
-    
+
     if (errorStr.includes('network') || errorStr.includes('timeout') || errorStr.includes('connection')) {
       return {
         category: 'Network Issue',
@@ -1023,7 +1058,7 @@ class AgentToolsService {
         suggestion: 'Check internet connection and try again'
       };
     }
-    
+
     if (errorStr.includes('rate limit') || errorStr.includes('too many requests')) {
       return {
         category: 'Rate Limiting',
@@ -1031,7 +1066,7 @@ class AgentToolsService {
         suggestion: 'Wait a few moments before trying again'
       };
     }
-    
+
     if (errorStr.includes('api key') || errorStr.includes('unauthorized') || errorStr.includes('authentication')) {
       return {
         category: 'Authentication Error',
@@ -1039,7 +1074,7 @@ class AgentToolsService {
         suggestion: 'Check API key configuration'
       };
     }
-    
+
     return {
       category: 'Unknown Error',
       severity: 'medium',
@@ -1085,7 +1120,7 @@ class AgentToolsService {
         data_type: 'pricing'
       }
     };
-    
+
     return sourceMap[toolName] || {
       source: 'Unknown',
       reliability: 'unknown',

@@ -1,14 +1,18 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
-import Markdown from 'react-native-markdown-display';
+
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../styles/colors';
 import { SarvamAIService } from '../services/SarvamAIService';
 import { AudioService } from '../services/AudioService';
 import { useAuth } from '../context/AuthContext';
 
-const AIResponseCard = ({ response, onTranslate, onSpeak }) => {
+
+
+
+
+const AIResponseCard = ({ response, onTranslate }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isTranslating, setIsTranslating] = useState(false);
   const { user } = useAuth();
@@ -18,7 +22,7 @@ const AIResponseCard = ({ response, onTranslate, onSpeak }) => {
 
     try {
       setIsPlaying(true);
-      
+
       const userLanguage = SarvamAIService.LANGUAGES[user?.language] || 'en-IN';
       const ttsResult = await SarvamAIService.textToSpeech(
         response.answer,
@@ -29,7 +33,7 @@ const AIResponseCard = ({ response, onTranslate, onSpeak }) => {
       if (ttsResult.success) {
         await AudioService.playAudio(ttsResult.audioUrl);
       }
-      
+
       setIsPlaying(false);
     } catch (error) {
       console.error('Error speaking response:', error);
@@ -42,7 +46,7 @@ const AIResponseCard = ({ response, onTranslate, onSpeak }) => {
 
     try {
       setIsTranslating(true);
-      
+
       const targetLangCode = SarvamAIService.LANGUAGES[targetLanguage];
       const translateResult = await SarvamAIService.translateText(
         response.answer,
@@ -59,7 +63,7 @@ const AIResponseCard = ({ response, onTranslate, onSpeak }) => {
         };
         onTranslate(translatedResponse, response); // Pass both translated and original
       }
-      
+
       setIsTranslating(false);
     } catch (error) {
       console.error('Error translating response:', error);
@@ -104,33 +108,25 @@ const AIResponseCard = ({ response, onTranslate, onSpeak }) => {
             </Text>
           )}
         </View>
-        <ScrollView 
-          style={styles.answerScrollView} 
-          showsVerticalScrollIndicator={true}
-          nestedScrollEnabled={true}
-          contentContainerStyle={styles.answerScrollContent}
-          horizontal={true}
-        >
-          <View style={{ minWidth: '100%' }}>
-            <Markdown style={markdownStyles}>
-              {response.answer}
-            </Markdown>
-          </View>
-        </ScrollView>
+        <View style={styles.answerContainer}>
+          <Text style={styles.answerText}>
+            {response.answer}
+          </Text>
+        </View>
       </View>
 
       {/* Action Buttons */}
       <View style={styles.actionButtons}>
         {/* Speak Button */}
-        <TouchableOpacity 
+        <TouchableOpacity
           style={[styles.actionButton, isPlaying && styles.actionButtonActive]}
           onPress={handleSpeak}
           disabled={isPlaying}
         >
-          <Ionicons 
-            name={isPlaying ? "volume-high" : "volume-medium"} 
-            size={16} 
-            color={isPlaying ? colors.success : colors.textSecondary} 
+          <Ionicons
+            name={isPlaying ? "volume-high" : "volume-medium"}
+            size={16}
+            color={isPlaying ? colors.success : colors.textSecondary}
           />
           <Text style={[styles.actionButtonText, isPlaying && styles.actionButtonTextActive]}>
             {isPlaying ? 'Speaking...' : 'Speak'}
@@ -172,16 +168,18 @@ const AIResponseCard = ({ response, onTranslate, onSpeak }) => {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: colors.cardBackground,
-    borderRadius: 16,
-    padding: 16,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 20,
     marginVertical: 8,
     marginHorizontal: 16,
-    shadowColor: colors.cardShadow,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 6,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: '#F3F4F6',
   },
   questionSection: {
     marginBottom: 16,
@@ -198,12 +196,13 @@ const styles = StyleSheet.create({
     marginLeft: 6,
   },
   questionText: {
-    fontSize: 14,
-    color: colors.textPrimary,
-    backgroundColor: '#F0F9FF',
-    padding: 12,
-    borderRadius: 12,
+    fontSize: 16,
+    color: '#374151',
+    backgroundColor: '#F9FAFB',
+    padding: 16,
+    borderRadius: 8,
     fontStyle: 'italic',
+    lineHeight: 22,
   },
   answerSection: {
     marginBottom: 16,
@@ -225,22 +224,20 @@ const styles = StyleSheet.create({
     marginLeft: 8,
     fontStyle: 'italic',
   },
-  answerScrollView: {
-    maxHeight: 300,
+  answerContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
+    padding: 12,
     minHeight: 60,
   },
-  answerScrollContent: {
-    flexGrow: 1,
-    paddingBottom: 10,
+  markdownContainer: {
+    minWidth: '100%',
   },
   answerText: {
-    fontSize: 11, // Further reduced font size for better compactness
-    color: colors.textPrimary,
-    lineHeight: 16, // Slightly reduced line height
-    backgroundColor: '#F8FDF8',
-    padding: 16,
-    borderRadius: 12,
-    wordWrap: 'break-word',
+    fontSize: 16,
+    color: '#374151',
+    lineHeight: 24,
+    fontWeight: '400',
   },
   actionButtons: {
     flexDirection: 'row',
@@ -286,118 +283,203 @@ const styles = StyleSheet.create({
   },
 });
 
+// Markdown styles following the specified formatting rules
 const markdownStyles = StyleSheet.create({
-  table: {
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-    borderRadius: 4,
-    marginVertical: 8,
-    backgroundColor: '#FFF',
-    minWidth: 350,
-    overflow: 'hidden',
-  },
-  thead: {
-    backgroundColor: '#F8F8F8',
-  },
-  tr: {
-    borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
-  },
-  th: {
-    fontWeight: 'bold',
-    fontSize: 12,
-    paddingVertical: 6,
-    paddingHorizontal: 6,
-    textAlign: 'center',
-    color: colors.primary,
-    backgroundColor: '#F8F8F8',
-    borderRightWidth: 1,
-    borderRightColor: '#E0E0E0',
-    minWidth: 60,
-    maxWidth: 120,
-    flexShrink: 1,
-    flexWrap: 'nowrap',
-    overflow: 'hidden',
-  },
-  td: {
-    fontSize: 12,
-    paddingVertical: 6,
-    paddingHorizontal: 6,
-    textAlign: 'center',
-    color: colors.textPrimary,
-    borderRightWidth: 1,
-    borderRightColor: '#E0E0E0',
-    minWidth: 60,
-    maxWidth: 120,
-    flexShrink: 1,
-    flexWrap: 'nowrap',
-    overflow: 'hidden',
-    wordBreak: 'keep-all',
-  },
+  // Body text
   body: {
-    fontSize: 12, // Reduced font size for markdown body
-    color: colors.textPrimary,
-    lineHeight: 18,
+    fontSize: 16,
+    color: '#374151',
+    lineHeight: 24,
+    fontWeight: '400',
   },
+
+  // Headings - clear hierarchy
   heading1: {
-    fontSize: 17,
-    fontWeight: 'bold',
-    color: colors.primary,
-    marginVertical: 8,
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#111827',
+    marginTop: 20,
+    marginBottom: 12,
+    lineHeight: 32,
   },
   heading2: {
-    fontSize: 15,
-    fontWeight: 'bold',
-    color: colors.primary,
-    marginVertical: 6,
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#111827',
+    marginTop: 16,
+    marginBottom: 10,
+    lineHeight: 28,
   },
   heading3: {
-    fontSize: 13,
+    fontSize: 18,
     fontWeight: '600',
-    color: colors.textPrimary,
-    marginVertical: 4,
+    color: '#111827',
+    marginTop: 14,
+    marginBottom: 8,
+    lineHeight: 26,
   },
+  heading4: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#374151',
+    marginTop: 12,
+    marginBottom: 6,
+    lineHeight: 24,
+  },
+  heading5: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#374151',
+    marginTop: 10,
+    marginBottom: 4,
+    lineHeight: 22,
+  },
+  heading6: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#6B7280',
+    marginTop: 8,
+    marginBottom: 4,
+    lineHeight: 20,
+  },
+
+  // Paragraphs
+  paragraph: {
+    fontSize: 16,
+    color: '#374151',
+    lineHeight: 24,
+    marginBottom: 12,
+  },
+
+  // Lists - unordered for general items, ordered only when rank/order matters
+  bullet_list: {
+    marginBottom: 12,
+  },
+  ordered_list: {
+    marginBottom: 12,
+  },
+  list_item: {
+    fontSize: 16,
+    color: '#374151',
+    lineHeight: 24,
+    marginBottom: 4,
+  },
+
+  // Emphasis - sparing use of bold, italics for emphasis
   strong: {
-    fontWeight: 'bold',
-    color: colors.textPrimary,
+    fontWeight: '600',
+    color: '#111827',
   },
   em: {
     fontStyle: 'italic',
-    color: colors.textSecondary,
+    color: '#374151',
   },
-  list_item: {
-    marginVertical: 2,
-  },
-  bullet_list: {
-    marginVertical: 4,
-  },
-  ordered_list: {
-    marginVertical: 4,
-  },
+
+  // Code blocks with syntax highlighting
   code_inline: {
-    backgroundColor: '#F0F0F0',
+    backgroundColor: '#F3F4F6',
+    color: '#DC2626',
+    fontSize: 14,
+    fontFamily: 'monospace',
     paddingHorizontal: 4,
     paddingVertical: 2,
     borderRadius: 4,
-    fontFamily: 'monospace',
-    fontSize: 14,
   },
-  fence: {
-    backgroundColor: '#F8F8F8',
-    padding: 10,
+  code_block: {
+    backgroundColor: '#F9FAFB',
+    color: '#374151',
+    fontSize: 14,
+    fontFamily: 'monospace',
+    padding: 12,
     borderRadius: 8,
     marginVertical: 8,
-    fontFamily: 'monospace',
-    fontSize: 14,
-  },
-  blockquote: {
-    backgroundColor: '#F0F9FF',
     borderLeftWidth: 4,
     borderLeftColor: colors.primary,
-    paddingLeft: 12,
-    paddingVertical: 8,
+  },
+  fence: {
+    backgroundColor: '#F9FAFB',
+    color: '#374151',
+    fontSize: 14,
+    fontFamily: 'monospace',
+    padding: 12,
+    borderRadius: 8,
+    marginVertical: 8,
+    borderLeftWidth: 4,
+    borderLeftColor: colors.primary,
+  },
+
+  // Tables - for comparisons and structured data, no bold inside tables
+  table: {
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 8,
+    marginVertical: 12,
+    overflow: 'hidden',
+  },
+  thead: {
+    backgroundColor: '#F9FAFB',
+  },
+  tbody: {
+    backgroundColor: '#FFFFFF',
+  },
+  th: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#374151',
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+    borderRightWidth: 1,
+    borderRightColor: '#E5E7EB',
+  },
+  td: {
+    fontSize: 14,
+    color: '#374151',
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+    borderRightWidth: 1,
+    borderRightColor: '#F3F4F6',
+  },
+  tr: {
+    flexDirection: 'row',
+  },
+
+  // Blockquotes
+  blockquote: {
+    backgroundColor: '#F9FAFB',
+    borderLeftWidth: 4,
+    borderLeftColor: colors.primary,
+    paddingLeft: 16,
+    paddingVertical: 12,
     marginVertical: 8,
     fontStyle: 'italic',
+  },
+
+  // Horizontal rules
+  hr: {
+    backgroundColor: '#E5E7EB',
+    height: 1,
+    marginVertical: 16,
+  },
+
+  // Links
+  link: {
+    color: colors.primary,
+    textDecorationLine: 'underline',
+  },
+
+  // Images
+  image: {
+    marginVertical: 8,
+    borderRadius: 8,
+  },
+
+  // Text styling
+  text: {
+    fontSize: 16,
+    color: '#374151',
+    lineHeight: 24,
   },
 });
 

@@ -267,7 +267,10 @@ class FarmerCropProjectsService {
           projectId,
           cropName: project.cropName,
           cropDetails: project.cropDetails,
-          conversationHistory: project.aiContext.conversationHistory.slice(0, 10), // Last 10
+          conversationHistory: project.aiContext.conversationHistory.slice(0, 10).flatMap(conv => [
+            { role: 'user', content: conv.query },
+            { role: 'assistant', content: conv.response }
+          ]), // Last 10 conversations converted to message format
           specializations: project.aiContext.specializations,
           preferences: project.aiContext.preferences,
           analytics: project.analytics,

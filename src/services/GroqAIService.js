@@ -19,7 +19,7 @@ class GroqAIService {
         };
         this.isAvailable = true; // Groq is cloud-based, always available
         this.lastChecked = Date.now();
-        
+
         console.log('🚀 GroqAI Service initialized');
     }
 
@@ -37,13 +37,13 @@ class GroqAIService {
         if (typeof process !== 'undefined' && process.env?.GROQ_API_KEY) {
             return process.env.GROQ_API_KEY;
         }
-        
+
         // Try from environment config
         const envKey = EnvironmentConfig.getGroqApiKey?.();
         if (envKey) return envKey;
-        
-    // No fallback: must be set in .env or config
-    return null;
+
+        // No fallback: must be set in .env or config
+        return null;
     }
 
     // Check availability (always true for cloud service)
@@ -160,10 +160,10 @@ class GroqAIService {
 
         try {
             console.log(`🤖 Processing with Groq: ${this.baseUrl}`);
-            
+
             // Import standardized animation service
             const ReasoningAnimationService = (await import('./ReasoningAnimationService')).default;
-            
+
             // Create standardized callback
             const reasoningCallback = ReasoningAnimationService.createCallback(context.onReasoningStep);
 
@@ -191,7 +191,7 @@ class GroqAIService {
                 }
                 toolsUsed = toolsResult.toolsUsed || [];
                 console.log(`Enhanced query with ${toolsUsed.length} tools: ${toolsUsed.join(', ')}`);
-                
+
                 await ReasoningAnimationService.animateToolsPhase(reasoningCallback, toolsUsed);
             } else {
                 await ReasoningAnimationService.animateToolsPhase(reasoningCallback, []);
@@ -211,8 +211,10 @@ class GroqAIService {
 
             console.log(`📋 Using Groq model: ${selectedModel} for query length: ${enhancedPrompt.length}`);
 
-            // Call Groq API
-            const response = await this.callGroq(selectedModel, systemPrompt, enhancedPrompt);
+            // Call Groq API with conversation history
+            const response = await this.callGroq(selectedModel, systemPrompt, enhancedPrompt, {
+                conversationHistory: context.conversationHistory
+            });
 
             reasoningCallback({
                 id: ReasoningAnimationService.STEP_IDS.ANALYSIS,
@@ -238,10 +240,10 @@ class GroqAIService {
             };
         } catch (error) {
             console.error('❌ Groq farming advice error:', error);
-            
+
             // Import animation service for error handling
             const ReasoningAnimationService = (await import('./ReasoningAnimationService')).default;
-            
+
             // Standardized error animation
             if (context.onReasoningStep) {
                 ReasoningAnimationService.animateError(
@@ -249,7 +251,7 @@ class GroqAIService {
                     'Failed to generate response, please try again'
                 );
             }
-            
+
             // Propagate real service error (no fallback)
             throw new Error(`AI service error: ${error.message}`);
         }
@@ -273,25 +275,32 @@ class GroqAIService {
             const farmCtx = context.__systemFarmContext ? `Farmer Profile: ${context.__systemFarmContext}` : '';
             const systemPrompt = `You are an agricultural assistant. ${farmCtx}
 
-RESPONSE GUIDELINES:
-• Keep the answer brief and focused on the user's request. Add only essential context if absolutely needed.
-• Prioritize the main task or query. Extra details only if they help the user reach their goal.
-• Short, relevant answer first. Add further details only if directly useful.
-• Max 150 words for simple queries.
-• Provide direct, concise answers to farming questions.
-• Focus on practical, location & crop-specific information.
-• Never restate the question—answer immediately.`;
+RESPONSE RULES:
+• Be friendly and helpful to farmers
+• Give focused, useful answers with key details
+• Use specific numbers and data when available
+• Keep responses natural and conversational
+• Connect related information briefly
+• Aim for 2-4 sentences for simple questions
+
+FORMATTING:
+• Write naturally like talking to a farmer
+• Always use plain text only - no markdown formatting, headers, bold text, bullet points, or special formatting
+• Keep explanations simple and practical
+• End with one clear next step if relevant
+• Keep responses simple and easy to read with clear line breaks`;
 
             console.log(`🤖 Simple response using ${selectedModel} for: "${query.substring(0, 50)}..."`);
-            
-            const response = await this.callGroq(selectedModel, systemPrompt, query, { 
-                maxTokens: 300,
-                reasoningEffort: 'low' // Use low reasoning for simple queries
+
+            const response = await this.callGroq(selectedModel, systemPrompt, query, {
+                maxTokens: 1200, // Increased token limit to prevent response truncation
+                reasoningEffort: 'low', // Use low reasoning for simple queries
+                conversationHistory: context.conversationHistory || []
             });
-            
+
             return {
                 success: true,
-                message: this.truncateResponse(response, 300), // Keep it short
+                message: response, // Return full response without truncation
                 source: 'groq-simple',
                 model: selectedModel
             };
@@ -305,11 +314,13 @@ RESPONSE GUIDELINES:
         }
     }
 
+
+
     // Enhanced reasoning method for complex queries with step-by-step display
-    async generateResponseWithReasoning(query, reasoningCallback = () => {}, context = {}) {
-        return await this.generateFarmingAdvice(query, { 
-            ...context, 
-            onReasoningStep: reasoningCallback 
+    async generateResponseWithReasoning(query, reasoningCallback = () => { }, context = {}) {
+        return await this.generateFarmingAdvice(query, {
+            ...context,
+            onReasoningStep: reasoningCallback
         });
     }
 
@@ -317,31 +328,41 @@ RESPONSE GUIDELINES:
     async generateResponseWithEffort(query, reasoningEffort = 'medium', context = {}) {
         const systemPrompt = this.buildFarmingSystemPrompt(context, []);
         const selectedModel = this.selectModelForQuery(query, context);
-        
+
         console.log(`🧠 Generating response with ${reasoningEffort} reasoning effort`);
-        
+
         return await this.callGroq(selectedModel, systemPrompt, query, {
             reasoningEffort: reasoningEffort,
-            maxTokens: reasoningEffort === 'high' ? 1500 : reasoningEffort === 'medium' ? 1200 : 800
+            maxTokens: reasoningEffort === 'high' ? 1800 : reasoningEffort === 'medium' ? 1500 : 1000
         });
     }
 
     // Core Groq API call with reasoning capabilities
     async callGroq(model, systemPrompt, userPrompt, options = {}) {
         const messages = [
-            ...(systemPrompt ? [{ role: 'system', content: systemPrompt }] : []),
-            { role: 'user', content: userPrompt }
+            ...(systemPrompt ? [{ role: 'system', content: systemPrompt }] : [])
         ];
+
+        // Add conversation history if provided
+        if (options.conversationHistory && Array.isArray(options.conversationHistory)) {
+            // Add recent conversation history (last 6 messages to stay within context limits)
+            const recentHistory = options.conversationHistory.slice(-6);
+            console.log(`💬 Adding ${recentHistory.length} conversation history messages`);
+            messages.push(...recentHistory);
+        }
+
+        // Add current user message
+        messages.push({ role: 'user', content: userPrompt });
 
         // Determine reasoning effort based on query complexity
         const reasoningEffort = this.determineReasoningEffort(userPrompt, options);
-        
+
         const payload = {
             model: model,
             messages: messages,
             temperature: options.temperature ?? 0.3,
-            max_tokens: options.maxTokens || 1200,           // OpenAI-compatible field
-            max_completion_tokens: options.maxTokens || 1200, // Some Groq variants still accept this
+            max_tokens: options.maxTokens || 1500,           // Balanced token limit
+            max_completion_tokens: options.maxTokens || 1500, // Balanced for good responses
             top_p: options.topP ?? 0.8,
             stream: false
         };
@@ -398,67 +419,67 @@ RESPONSE GUIDELINES:
 
                 const data = await response.json();
 
-            if (!data.choices || !data.choices[0]) {
-                console.error('❌ Invalid Groq response format (no choices):', data);
-                throw new Error('Invalid response format from Groq');
-            }
-
-            const primaryChoice = data.choices[0];
-            let responseContent = primaryChoice?.message?.content;
-
-            // If content is an array of parts, concatenate textual parts
-            if (Array.isArray(responseContent)) {
-                responseContent = responseContent.map(part => (typeof part === 'string' ? part : part?.text || '')).join('\n').trim();
-            }
-
-            // Alternative extraction heuristics when content is empty
-            if (!responseContent || typeof responseContent !== 'string' || responseContent.trim().length === 0) {
-                // Try reasoning object (some providers separate reasoning from final answer)
-                if (primaryChoice.message && primaryChoice.message.reasoning_content) {
-                    responseContent = primaryChoice.message.reasoning_content;
+                if (!data.choices || !data.choices[0]) {
+                    console.error('❌ Invalid Groq response format (no choices):', data);
+                    throw new Error('Invalid response format from Groq');
                 }
-                else if (primaryChoice.reasoning && typeof primaryChoice.reasoning === 'object') {
-                    // Flatten any textual fields in reasoning
-                    const reasoningText = Object.values(primaryChoice.reasoning)
-                        .filter(v => typeof v === 'string')
-                        .join('\n');
-                    if (reasoningText.trim().length > 20) {
-                        responseContent = reasoningText.trim();
+
+                const primaryChoice = data.choices[0];
+                let responseContent = primaryChoice?.message?.content;
+
+                // If content is an array of parts, concatenate textual parts
+                if (Array.isArray(responseContent)) {
+                    responseContent = responseContent.map(part => (typeof part === 'string' ? part : part?.text || '')).join('\n').trim();
+                }
+
+                // Alternative extraction heuristics when content is empty
+                if (!responseContent || typeof responseContent !== 'string' || responseContent.trim().length === 0) {
+                    // Try reasoning object (some providers separate reasoning from final answer)
+                    if (primaryChoice.message && primaryChoice.message.reasoning_content) {
+                        responseContent = primaryChoice.message.reasoning_content;
+                    }
+                    else if (primaryChoice.reasoning && typeof primaryChoice.reasoning === 'object') {
+                        // Flatten any textual fields in reasoning
+                        const reasoningText = Object.values(primaryChoice.reasoning)
+                            .filter(v => typeof v === 'string')
+                            .join('\n');
+                        if (reasoningText.trim().length > 20) {
+                            responseContent = reasoningText.trim();
+                        }
+                    }
+                    // Some implementations may put final answer inside usage or metadata (rare)
+                    if ((!responseContent || responseContent.trim().length === 0) && primaryChoice.message && primaryChoice.message.content === '') {
+                        console.warn('⚠️ Empty content field received. Full choice for diagnostics:', JSON.stringify(primaryChoice, null, 2).substring(0, 2000));
                     }
                 }
-                // Some implementations may put final answer inside usage or metadata (rare)
-                if ((!responseContent || responseContent.trim().length === 0) && primaryChoice.message && primaryChoice.message.content === '') {
-                    console.warn('⚠️ Empty content field received. Full choice for diagnostics:', JSON.stringify(primaryChoice, null, 2).substring(0, 2000));
+
+                if (!responseContent || responseContent.trim().length === 0) {
+                    const finishReason = primaryChoice.finish_reason;
+                    console.error('❌ Empty or invalid response content after heuristics:', { finishReason, fullResponse: data });
+                    throw new Error('Groq returned empty or invalid response content');
                 }
-            }
 
-            if (!responseContent || responseContent.trim().length === 0) {
-                const finishReason = primaryChoice.finish_reason;
-                console.error('❌ Empty or invalid response content after heuristics:', { finishReason, fullResponse: data });
-                throw new Error('Groq returned empty or invalid response content');
-            }
+                console.log(`📥 Raw Groq response: "${responseContent.substring(0, 200)}..." (${responseContent.length} chars)`);
 
-            console.log(`📥 Raw Groq response: "${responseContent.substring(0, 200)}..." (${responseContent.length} chars)`);
+                // Log reasoning information if available
+                if (data.choices[0].reasoning) {
+                    console.log(`🧠 Reasoning steps: ${data.choices[0].reasoning.length} steps`);
+                }
 
-            // Log reasoning information if available
-            if (data.choices[0].reasoning) {
-                console.log(`🧠 Reasoning steps: ${data.choices[0].reasoning.length} steps`);
-            }
+                // Ensure response is under 1500 characters for translation API
+                if (responseContent.length > 1500) {
+                    console.log(`⚠️ Response too long (${responseContent.length} chars), truncating...`);
+                    responseContent = this.truncateResponse(responseContent, 1500);
+                }
 
-            // Ensure response is under 1500 characters for translation API
-            if (responseContent.length > 1500) {
-                console.log(`⚠️ Response too long (${responseContent.length} chars), truncating...`);
-                responseContent = this.truncateResponse(responseContent, 1500);
-            }
+                responseContent = this.sanitizeResponse(responseContent);
 
-            responseContent = this.sanitizeResponse(responseContent);
-            
-            // Double-check after sanitization
-            if (!responseContent || responseContent.trim().length === 0) {
-                console.error('❌ Response became empty after sanitization');
-                throw new Error('Response was sanitized to empty content');
-            }
-            
+                // Double-check after sanitization
+                if (!responseContent || responseContent.trim().length === 0) {
+                    console.error('❌ Response became empty after sanitization');
+                    throw new Error('Response was sanitized to empty content');
+                }
+
                 console.log(`📥 Groq response received (${responseContent.length} chars) after sanitization`);
                 return responseContent;
 
@@ -491,7 +512,7 @@ RESPONSE GUIDELINES:
             'analyze', 'compare', 'strategy', 'optimize', 'complex', 'detailed',
             'comprehensive', 'plan', 'recommend', 'why', 'explain', 'calculate'
         ];
-        
+
         const simpleKeywords = [
             'weather', 'price', 'when', 'what', 'where', 'quick', 'simple', 'brief'
         ];
@@ -504,12 +525,12 @@ RESPONSE GUIDELINES:
         if (complexCount >= 2 || queryLength > 200) {
             return 'high';
         }
-        
+
         // Low reasoning for simple data queries
         if (simpleCount >= 1 && complexCount === 0 && queryLength < 50) {
             return 'low';
         }
-        
+
         // Medium reasoning for most farming advice
         return 'medium';
     }
@@ -521,46 +542,40 @@ RESPONSE GUIDELINES:
             userLine += `\nFarm Profile: ${context.__systemFarmContext}`;
         }
         // REMOVED conversation summary to prevent context bleeding for farmers
-        
+
         // Use the friendly system prompt from external file
         let systemPrompt;
         try {
             const systemPrompts = require('../prompts/systemPrompts.json');
-            systemPrompt = systemPrompts.prompts?.farming_assistant?.languages?.['en-IN'] || 
-                "You are a trusted farming advisor for small and medium farmers in India. Your advice should be practical, regionally relevant, and based on local conditions whenever possible. Use simple, clear language—avoid jargon and technical terms. If you don't know something, say so honestly and suggest how the farmer can find out locally (e.g., from a neighbor, local agri office, or market). Incorporate traditional wisdom and local practices when relevant. Never assume the farmer has advanced technology or internet access. Give 1-3 clear, actionable steps, and always prioritize safety and sustainability.";
+            systemPrompt = systemPrompts.prompts?.farming_assistant?.languages?.['en-IN'] ||
+                "You are a trusted farming advisor for small and medium farmers in India. Your advice should be practical, regionally relevant, and based on local conditions whenever possible. Use simple, clear language—avoid jargon and technical terms. If you don't know something, say so honestly and suggest how the farmer can find out locally (e.g., from a neighbor, local agri office, or market). Incorporate traditional wisdom and local practices when relevant. Never assume the farmer has advanced technology or internet access. IMPORTANT: Keep responses natural and focused. Use plain text only - no markdown formatting, headers, bold text, bullet points, or special formatting. Give helpful details but stay concise.";
         } catch (e) {
-            systemPrompt = "You are a trusted farming advisor for small and medium farmers in India. Your advice should be practical, regionally relevant, and based on local conditions whenever possible. Use simple, clear language—avoid jargon and technical terms. If you don't know something, say so honestly and suggest how the farmer can find out locally (e.g., from a neighbor, local agri office, or market). Incorporate traditional wisdom and local practices when relevant. Never assume the farmer has advanced technology or internet access. Give 1-3 clear, actionable steps, and always prioritize safety and sustainability.";
+            systemPrompt = "You are a trusted farming advisor for small and medium farmers in India. Your advice should be practical, regionally relevant, and based on local conditions whenever possible. Use simple, clear language—avoid jargon and technical terms. If you don't know something, say so honestly and suggest how the farmer can find out locally (e.g., from a neighbor, local agri office, or market). Incorporate traditional wisdom and local practices when relevant. Never assume the farmer has advanced technology or internet access. IMPORTANT: Keep responses natural and focused. Use plain text only - no markdown formatting, headers, bold text, bullet points, or special formatting. Give helpful details but stay concise.";
         }
-        
+
         let prompt = `${systemPrompt}\n\n${userLine}`;
 
         if (toolsUsed.length > 0) {
             prompt += `\n\nI've got access to real-time data to give you the most current info. I'll share the exact numbers but won't bore you with technical details unless you ask.`;
         }
 
-    prompt += `\n\nHere's how I'll help you:
+        prompt += `\n\nRESPONSE RULES:
+• Be friendly and helpful to farmers
+• Give complete but focused answers - include key details without rambling
+• Use specific numbers and data when available
+• Explain briefly what the information means for their farming
+• Keep responses natural and conversational
+• Aim for 3-5 sentences for most topics
 
-CONVERSATION STYLE:
-• I talk like a real person who knows farming, not a robot reading from a manual
-• Straight to the point - no fluff or fancy words
-• I'll give you practical steps you can actually do
-• Keep it under 250 words unless you need more details
+COMMUNICATION STYLE:
+• Write naturally like talking to a farmer friend
+• Always use plain text only - no markdown, headers, bold, or special formatting
+• Connect related information (weather + crops, prices + planning)
+• Keep explanations simple and practical
+• End with one clear recommendation or next step
 
-WHAT I ALWAYS DO:
-• Use your specific crops, soil, and farm details to give tailored advice
-• Share exact numbers when I have them (temperatures, prices, etc.)
-• If something's not available, I'll tell you straight and work with what we have
-• Give you 1-3 clear action steps, numbered and prioritized
-• Skip the obvious stuff and focus on what actually helps you
-
-WHAT I NEVER DO:
-• Use jargon or textbook language
-• Repeat your question back to you
-• Say "as an AI" or mention technical stuff
-• Give vague advice that doesn't help
-• Reference previous conversations unless directly asked
-
-Let's talk farming - what do you need to know?`;
+Example response style:
+"Today in Namburu it's 33°C and partly cloudy with 65% humidity, good conditions for your chilli sowing. Tomorrow expects 2mm light rain followed by sunny weather, so hold off watering until after the rain. Mirchi prices are currently 4,200 rupees per quintal, up 8% from last week. This is a good time to focus on proper plant spacing in your 2-acre field while prices are strong."`;
 
         return prompt;
     }
@@ -652,7 +667,7 @@ Provide specific actionable advice for:
         try {
             console.log('Testing Groq AI connection...');
             const result = await this.getSimpleResponse('What is the best time to plant wheat?', { location: 'India' });
-            
+
             if (result.success) {
                 console.log('✅ Groq AI connection successful!');
                 console.log('Sample response:', result.message.substring(0, 100) + '...');

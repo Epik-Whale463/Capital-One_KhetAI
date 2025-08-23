@@ -4,17 +4,19 @@
  */
 
 class ReasoningAnimationService {
-    // Enhanced animation timings for smoother user experience
+    // Enhanced animation timings for smoother user experience with increased latency
     static TIMINGS = {
-        INSTANT: 50,    // Ultra-fast micro-interactions
-        MICRO: 150,     // Smooth micro-animations 
-        FAST: 250,      // Quick, snappy operations
-        NORMAL: 400,    // Standard operations with smooth feel
-        SLOW: 600,      // Complex operations, still responsive
-        VERY_SLOW: 900, // Heavy operations, reduced from 1200ms
-        STAGGER: 80,    // Stagger delay between step animations
-        PULSE: 1200,    // Breathing pulse animation
-        TRANSITION: 320 // Smooth state transitions
+        INSTANT: 100,    // Ultra-fast micro-interactions (increased from 50ms)
+        MICRO: 250,      // Smooth micro-animations (increased from 150ms)
+        FAST: 450,       // Quick, snappy operations (increased from 250ms)
+        NORMAL: 700,     // Standard operations with smooth feel (increased from 400ms)
+        SLOW: 1000,      // Complex operations, still responsive (increased from 600ms)
+        VERY_SLOW: 1400, // Heavy operations (increased from 900ms)
+        STAGGER: 120,    // Stagger delay between step animations (increased from 80ms)
+        PULSE: 1500,     // Breathing pulse animation (increased from 1200ms)
+        TRANSITION: 500, // Smooth state transitions (increased from 320ms)
+        STATUS_TRANSITION: 350, // Dedicated timing for status changes
+        FADE_TRANSITION: 400    // Smooth fade transitions between states
     };
 
     // Standard step IDs for consistent animation flow
@@ -44,19 +46,19 @@ class ReasoningAnimationService {
         SKIPPED: 'skipped'      // Step was bypassed
     };
 
-    // Emoji icons for different step types
+    // Icons for different step types (using Ionicons names)
     static ICONS = {
-        UNDERSTAND: '',
-        TOOLS: '',
-        ANALYSIS: '',
-        REASONING: '',
-        SYNTHESIS: '',
-        RESPONSE: '',
-        TRANSLATE: '',
-        TTS: '',
-        STT: '',
-        ERROR: '',
-        SUCCESS: ''
+        UNDERSTAND: 'brain',
+        TOOLS: 'settings',
+        ANALYSIS: 'search',
+        REASONING: 'bulb',
+        SYNTHESIS: 'link',
+        RESPONSE: 'chatbubble',
+        TRANSLATE: 'globe',
+        TTS: 'volume-high',
+        STT: 'mic',
+        ERROR: 'close-circle',
+        SUCCESS: 'checkmark-circle'
     };
 
     /**
@@ -131,7 +133,7 @@ class ReasoningAnimationService {
      */
     static getIconForStep(stepId) {
         const upperStepId = stepId.toUpperCase();
-        return this.ICONS[upperStepId] || '⚙️';
+        return this.ICONS[upperStepId] || 'settings';
     }
 
     /**

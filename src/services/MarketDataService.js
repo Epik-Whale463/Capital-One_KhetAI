@@ -36,9 +36,9 @@ class MarketDataService {
         }
       }
 
-      // Create AbortController for timeout
+      // Create AbortController for timeout - increased for government APIs
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 6000); // 6 second timeout
+      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout for government APIs
 
       const response = await fetch(url, {
         method: 'GET',
@@ -97,9 +97,9 @@ class MarketDataService {
 
       for (const source of sources) {
         try {
-          // Create AbortController for timeout
+          // Create AbortController for timeout - increased for external APIs
           const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout per source
+          const timeoutId = setTimeout(() => controller.abort(), 12000); // 12 second timeout per source
 
           const response = await fetch(source.url, {
             headers: {
@@ -144,8 +144,13 @@ class MarketDataService {
 
   // Realtime (latest-day) consolidated price snapshot using data.gov.in APMC resource
   static async fetchRealtimeCommodityPrice(commodity, { state = '', market = '', variety = '', limit = 100 } = {}) {
-    try {
-      if (!commodity) throw new Error('commodity required');
+    // Retry logic for network timeouts
+    const maxRetries = 2;
+    let lastError = null;
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        if (!commodity) throw new Error('commodity required');
       const envMod = await import('../config/environment.js');
       const apiKey = envMod.default.getDataGovApiKey();
       if (!apiKey || apiKey === 'SET_DATA_GOV_API_KEY') {
@@ -163,9 +168,9 @@ class MarketDataService {
 
       const url = `${this.APMC_API_URL}?${params.toString()}`;
       
-      // Create AbortController for timeout
+      // Create AbortController for timeout - increased for government APIs  
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 6000); // 6 second timeout
+      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout for government APIs
       
       const res = await fetch(url, { 
         headers: { 'Accept': 'application/json', 'User-Agent': 'Khet-AI/1.0' },
@@ -264,14 +269,31 @@ class MarketDataService {
         source: 'APMC (data.gov.in)',
         timestamp: new Date().toISOString()
       };
-    } catch (err) {
-      console.error('Realtime commodity price error:', err);
-      return { 
-        success: false, 
-        error: err.name === 'AbortError' ? 'Request timeout' : err.message, 
-        commodity 
-      };
+      
+      } catch (err) {
+        lastError = err;
+        const isTimeout = err.name === 'AbortError';
+        console.error(`Realtime commodity price error (attempt ${attempt}/${maxRetries}):`, err.message);
+        
+        // If it's a timeout and we have retries left, wait and try again
+        if (isTimeout && attempt < maxRetries) {
+          console.log(`Retrying in ${attempt * 2} seconds...`);
+          await new Promise(resolve => setTimeout(resolve, attempt * 2000));
+          continue;
+        }
+        
+        // If it's the last attempt or non-timeout error, break
+        break;
+      }
     }
+    
+    // Return error after all retries failed
+    return { 
+      success: false, 
+      error: lastError?.name === 'AbortError' ? 'Request timeout after retries' : lastError?.message || 'Unknown error', 
+      commodity,
+      attempts: maxRetries
+    };
   }
 
   // Get comprehensive market analysis - REAL DATA ONLY

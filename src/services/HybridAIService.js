@@ -230,7 +230,7 @@ class HybridAIService {
     };
   }
 
-  // Post-process responses to enforce: concise direct answer, empathetic tone, and one proactive next step
+  // Post-process responses to maintain focused, helpful answers
   applyResponseStyle(response = {}, originalQuery = '', farmerContext = {}, queryIntent = {}) {
     try {
       if (!response) return response;
@@ -239,46 +239,21 @@ class HybridAIService {
       const primary = response.message || response.advice || response.text || '';
       let trimmed = String(primary).trim();
 
-      // If the response is long, keep only the first 2 sentences for brevity
-      if (trimmed.split(/[\.\!\?]\s/).length > 2) {
-        const parts = trimmed.split(/([\.\!\?])\s/); // keep sentence delimiters
-        // Reconstruct first two sentences
-        let sentenceCount = 0;
-        let concise = '';
-        for (let i = 0; i < parts.length; i++) {
-          concise += parts[i];
-          if (/([\.\!\?])$/.test(parts[i])) sentenceCount++;
-          if (sentenceCount >= 2) break;
-        }
-        trimmed = concise.trim();
-      }
+      // Keep full response - no truncation to preserve complete information
 
-      // Empathetic prefix if the query is personalized
-      const isPersonal = this.isPersonalizedQuery(originalQuery, farmerContext);
-      const empathy = isPersonal ? `I understand — ` : '';
+      // Clean up spacing and redundant phrases
+      trimmed = trimmed
+        .replace(/^(well,?|so,?|basically,?)\s+/i, '')
+        .replace(/\s+/g, ' ')
+        .trim();
 
-      // Proactive single next-step suggestion based on queryIntent
-      let nextStep = '';
-      if (queryIntent && Array.isArray(queryIntent.toolsNeeded) && queryIntent.toolsNeeded.includes('market_data')) {
-        nextStep = 'Check the latest local market price to decide when to sell.';
-      } else if (queryIntent && Array.isArray(queryIntent.toolsNeeded) && queryIntent.toolsNeeded.includes('weather')) {
-        nextStep = 'Keep an eye on the next 48-hour rainfall forecast.';
-      } else if (queryIntent && Array.isArray(queryIntent.toolsNeeded) && queryIntent.toolsNeeded.includes('plant_disease')) {
-        nextStep = 'Inspect the affected plants and, if possible, share clear photos for a quick diagnosis.';
-      } else if (!nextStep) {
-        nextStep = 'If you want, I can provide step-by-step actions or fetch recent data.';
-      }
-
-      // Compose final message: empathy + concise answer + proactive step
-      const finalMessage = `${empathy}${trimmed} ${nextStep}`.trim();
-
-      // Update response fields in place while preserving metadata
+      // Update response fields
       const styled = {
         ...response,
-        message: finalMessage,
-        advice: finalMessage,
+        message: trimmed,
+        advice: trimmed,
         styled: true,
-        styleMeta: { concise: true, empathetic: !!empathy, proactive: true }
+        styleMeta: { focused: true, wordCount: trimmed.split(' ').length }
       };
 
       return styled;
@@ -843,6 +818,7 @@ class HybridAIService {
       const groqResult = await this.groq.generateFarmingAdvice(query, {
         location,
         onReasoningStep: reasoningCallback,
+        conversationHistory: enhancedContext.conversationHistory || [],
         ...queryIntent,
         // ensure coordinates propagate for tool parameter extraction
         coordinates: queryIntent.coordinates || undefined
@@ -1062,7 +1038,10 @@ Begin:`;
       }
 
       // Process the English query (tools will now work correctly)
-      const adviceResult = await this.groq.generateFarmingAdvice(englishQuery, context);
+      const adviceResult = await this.groq.generateFarmingAdvice(englishQuery, {
+        ...context,
+        conversationHistory: context.conversationHistory || []
+      });
 
       // Step 3: Translate response back to user's language if needed
       let finalAdvice = adviceResult.advice;
@@ -1224,7 +1203,10 @@ Begin:`;
 
       let adviceResult;
       if (await this.groq.checkAvailability()) {
-        adviceResult = await this.groq.generateFarmingAdvice(englishQuery, context);
+        adviceResult = await this.groq.generateFarmingAdvice(englishQuery, {
+          ...context,
+          conversationHistory: context.conversationHistory || []
+        });
       } else {
         reasoningCallback({
           id: 'fallback',

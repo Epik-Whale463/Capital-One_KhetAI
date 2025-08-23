@@ -20,6 +20,7 @@ import { spacing, radius } from '../styles/layout';
 import { useChat } from '../context/ChatContext';
 import { useAuth } from '../context/AuthContext';
 import ChatBubble from '../components/ChatBubble';
+import AIResponseCard from '../components/AIResponseCard';
 import ChatInput from '../components/ChatInput';
 import TypingIndicator from '../components/TypingIndicator';
 // LiveReasoningDisplay no longer shown separately; inline reasoning row used
@@ -337,11 +338,34 @@ const ChatScreen = ({ route }) => {
                         onToggle={() => setInlineCollapsed(!inlineCollapsed)}
                     />
                 )}
-                <ChatBubble
-                    message={item}
-                    isUser={item.isUser || false}
-                    onUpdateMessage={handleUpdateMessage}
-                />
+                {item.isUser ? (
+                    <ChatBubble
+                        message={item}
+                        isUser={true}
+                        onUpdateMessage={handleUpdateMessage}
+                    />
+                ) : (
+                    <AIResponseCard
+                        response={{
+                            question: item.question,
+                            answer: item.answer || item.advice,
+                            language: item.language,
+                            translatedTo: item.translatedTo,
+                            originalAnswer: item.originalEnglish
+                        }}
+                        onTranslate={(translatedResponse, originalResponse) => {
+                            handleUpdateMessage(item.id, {
+                                ...item,
+                                answer: translatedResponse.answer,
+                                translatedTo: translatedResponse.translatedTo,
+                                originalEnglish: originalResponse.answer
+                            });
+                        }}
+                        onSpeak={() => {
+                            // Handle speak functionality if needed
+                        }}
+                    />
+                )}
             </View>
         );
     };

@@ -19,31 +19,31 @@ export const InlineReasoningRow = ({ steps = [], visible = false, onPress, colla
 
   useEffect(() => {
     if (visible) {
-      // Enhanced entrance animation with smoother timing
+      // Enhanced entrance animation with much smoother timing
       Animated.parallel([
-        Animated.timing(opacity, { 
-          toValue: 1, 
-          duration: 280, // Longer for smoother appearance
-          useNativeDriver: true 
+        Animated.timing(opacity, {
+          toValue: 1,
+          duration: 500, // Increased from 280ms for smoother appearance
+          useNativeDriver: true
         }),
-        Animated.timing(translateY, { 
-          toValue: 0, 
-          duration: 320, // Slightly longer for fluid motion
-          useNativeDriver: true 
+        Animated.timing(translateY, {
+          toValue: 0,
+          duration: 600, // Increased from 320ms for more fluid motion
+          useNativeDriver: true
         })
       ]).start();
     } else {
-      // Enhanced exit animation
+      // Enhanced exit animation with smoother fade
       Animated.parallel([
-        Animated.timing(opacity, { 
-          toValue: 0, 
-          duration: 200, // Slightly longer for smoother fade
-          useNativeDriver: true 
+        Animated.timing(opacity, {
+          toValue: 0,
+          duration: 400, // Increased from 200ms for smoother fade
+          useNativeDriver: true
         }),
-        Animated.timing(translateY, { 
-          toValue: 6, // Slightly larger offset for better visual feedback
-          duration: 200, 
-          useNativeDriver: true 
+        Animated.timing(translateY, {
+          toValue: 8, // Increased from 6 for better visual feedback
+          duration: 400, // Increased from 200ms
+          useNativeDriver: true
         })
       ]).start();
     }
@@ -75,11 +75,11 @@ export const InlineReasoningRow = ({ steps = [], visible = false, onPress, colla
   const dynamicHeight = isExpanded ? baseHeight + (steps.length * stepHeight) + 20 : baseHeight;
 
   return (
-    <Animated.View style={[styles.container, { opacity, transform: [{ translateY }] }]}>      
+    <Animated.View style={[styles.container, { opacity, transform: [{ translateY }] }]}>
       <View style={[styles.inner, { minHeight: dynamicHeight }]}>
         {/* Header - Always visible */}
         <TouchableOpacity style={styles.header} onPress={toggleExpanded} activeOpacity={0.8}>
-          <View style={styles.leftIcon}>          
+          <View style={styles.leftIcon}>
             <Ionicons name="sparkles" size={14} color={colors.primary} />
           </View>
           <View style={styles.textBlock}>
@@ -93,10 +93,10 @@ export const InlineReasoningRow = ({ steps = [], visible = false, onPress, colla
               <View style={[styles.progressFill, { width: `${pct}%` }]} />
             </View>
           </View>
-          <Ionicons 
-            name={isExpanded ? 'chevron-up' : 'chevron-down'} 
-            size={16} 
-            color={colors.textSecondary} 
+          <Ionicons
+            name={isExpanded ? 'chevron-up' : 'chevron-down'}
+            size={16}
+            color={colors.textSecondary}
           />
         </TouchableOpacity>
 
@@ -109,93 +109,94 @@ export const InlineReasoningRow = ({ steps = [], visible = false, onPress, colla
               if (!stepAnim.current[id]) {
                 stepAnim.current[id] = {
                   opacity: new Animated.Value(0),
-                  translateY: new Animated.Value(8) // Slightly larger initial offset
+                  translateY: new Animated.Value(12) // Larger initial offset for smoother entrance
                 };
-                // Enhanced staggered entrance with smoother timing
+                // Enhanced staggered entrance with much smoother timing
                 setTimeout(() => {
                   Animated.parallel([
-                    Animated.timing(stepAnim.current[id].opacity, { 
-                      toValue: 1, 
-                      duration: 320, // Longer for smoother appearance
-                      useNativeDriver: true 
+                    Animated.timing(stepAnim.current[id].opacity, {
+                      toValue: 1,
+                      duration: 500, // Increased from 320ms for smoother appearance
+                      useNativeDriver: true
                     }),
-                    Animated.timing(stepAnim.current[id].translateY, { 
-                      toValue: 0, 
-                      duration: 380, // Slightly longer for fluid motion
-                      useNativeDriver: true 
+                    Animated.timing(stepAnim.current[id].translateY, {
+                      toValue: 0,
+                      duration: 600, // Increased from 380ms for more fluid motion
+                      useNativeDriver: true
                     })
                   ]).start();
-                }, index * 80); // Increased stagger for better visual flow
+                }, index * 120); // Increased stagger from 80ms for better visual flow
               }
               const isActive = step.status === 'active';
               const isDone = step.status === 'completed';
-              // Enhanced animate transition to completed with smoother feedback
+              // Enhanced animate transition to completed with much smoother feedback
               const prev = prevStatuses.current[id];
               if (prev && prev !== step.status && isDone) {
-                // Smoother fade to completed state
-                Animated.timing(stepAnim.current[id].opacity, { 
-                  toValue: 0.5, // Slightly more visible when completed
-                  duration: 420, // Longer for smoother transition
-                  useNativeDriver: true 
+                // Much smoother fade to completed state
+                Animated.timing(stepAnim.current[id].opacity, {
+                  toValue: 0.6, // More visible when completed
+                  duration: 700, // Much longer for smoother transition
+                  useNativeDriver: true
                 }).start();
               } else if (isActive) {
-                // Enhanced active state with micro-bounce for attention
+                // Enhanced active state with smoother micro-bounce for attention
                 stepAnim.current[id].opacity.stopAnimation(() => {
                   Animated.sequence([
-                    Animated.timing(stepAnim.current[id].opacity, { 
-                      toValue: 1, 
-                      duration: 200, 
-                      useNativeDriver: true 
+                    Animated.timing(stepAnim.current[id].opacity, {
+                      toValue: 1,
+                      duration: 350, // Increased from 200ms for smoother transition
+                      useNativeDriver: true
                     }),
-                    // Subtle micro-bounce for active feedback
-                    Animated.timing(stepAnim.current[id].translateY, { 
-                      toValue: -1, 
-                      duration: 150, 
-                      useNativeDriver: true 
+                    // Smoother micro-bounce for active feedback
+                    Animated.timing(stepAnim.current[id].translateY, {
+                      toValue: -2, // Slightly larger bounce
+                      duration: 250, // Increased from 150ms for smoother motion
+                      useNativeDriver: true
                     }),
-                    Animated.timing(stepAnim.current[id].translateY, { 
-                      toValue: 0, 
-                      duration: 150, 
-                      useNativeDriver: true 
+                    Animated.timing(stepAnim.current[id].translateY, {
+                      toValue: 0,
+                      duration: 300, // Increased from 150ms for smoother return
+                      useNativeDriver: true
                     })
                   ]).start();
                 });
               }
               prevStatuses.current[id] = step.status;
               return (
-              <Animated.View key={id} style={[styles.stepRow, {
-                opacity: isDone && !isActive ? stepAnim.current[id].opacity : stepAnim.current[id].opacity,
-                transform: [{ translateY: stepAnim.current[id].translateY }]
-              }]}>
-                <View style={styles.stepIcon}>
-                  {step.status === 'completed' ? (
-                    <Ionicons name="checkmark-circle" size={16} color={colors.success || '#10b981'} />
-                  ) : step.status === 'active' ? (
-                    <View style={styles.activeIndicator}>
-                      <View style={styles.pulse} />
-                    </View>
-                  ) : step.status === 'uncertain' ? (
-                    <Ionicons name="help-circle" size={16} color="#ff8c00" />
-                  ) : step.status === 'error' ? (
-                    <Ionicons name="warning" size={16} color="#d9534f" />
-                  ) : (
-                    <View style={styles.pendingIndicator} />
-                  )}
-                </View>
-                <View style={[styles.stepContent, (isDone && !isActive) && styles.stepContentCompleted]}>
-                  <Text style={[styles.stepTitle, (isActive) && styles.stepTitleActive]}>{step.title || `Step ${index + 1}`}</Text>
-                  {step.description && (
-                    <Text style={[styles.stepDescription]} numberOfLines={2}>
-                      {step.description}
-                    </Text>
-                  )}
-                  {step.duration && step.status === 'completed' && (
-                    <Text style={[styles.stepDuration]}>{step.duration}ms</Text>
-                  )}
-                </View>
-              </Animated.View>
-            )})}
-            
+                <Animated.View key={id} style={[styles.stepRow, {
+                  opacity: isDone && !isActive ? stepAnim.current[id].opacity : stepAnim.current[id].opacity,
+                  transform: [{ translateY: stepAnim.current[id].translateY }]
+                }]}>
+                  <View style={styles.stepIcon}>
+                    {step.status === 'completed' ? (
+                      <Ionicons name="checkmark-circle" size={16} color={colors.success || '#10b981'} />
+                    ) : step.status === 'active' ? (
+                      <View style={styles.activeIndicator}>
+                        <View style={styles.pulse} />
+                      </View>
+                    ) : step.status === 'uncertain' ? (
+                      <Ionicons name="help-circle" size={16} color="#ff8c00" />
+                    ) : step.status === 'error' ? (
+                      <Ionicons name="warning" size={16} color="#d9534f" />
+                    ) : (
+                      <View style={styles.pendingIndicator} />
+                    )}
+                  </View>
+                  <View style={[styles.stepContent, (isDone && !isActive) && styles.stepContentCompleted]}>
+                    <Text style={[styles.stepTitle, (isActive) && styles.stepTitleActive]}>{step.title || `Step ${index + 1}`}</Text>
+                    {step.description && (
+                      <Text style={[styles.stepDescription]} numberOfLines={2}>
+                        {step.description}
+                      </Text>
+                    )}
+                    {step.duration && step.status === 'completed' && (
+                      <Text style={[styles.stepDuration]}>{step.duration}ms</Text>
+                    )}
+                  </View>
+                </Animated.View>
+              )
+            })}
+
             {/* Show current thinking if active step */}
             {active && (
               <View style={styles.currentThought}>
@@ -237,31 +238,31 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginRight: 10
   },
-  textBlock: { 
-    flex: 1 
+  textBlock: {
+    flex: 1
   },
-  title: { 
-    fontSize: 12, 
-    fontWeight: '600', 
-    color: colors.textPrimary 
+  title: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.textPrimary
   },
-  subtitle: { 
-    fontSize: 11, 
-    color: colors.textSecondary, 
-    marginTop: 2 
+  subtitle: {
+    fontSize: 11,
+    color: colors.textSecondary,
+    marginTop: 2
   },
-  progressBarBg: { 
-    height: 3, 
-    backgroundColor: 'rgba(0,0,0,0.1)', 
-    borderRadius: 2, 
-    marginTop: 6 
+  progressBarBg: {
+    height: 3,
+    backgroundColor: 'rgba(0,0,0,0.1)',
+    borderRadius: 2,
+    marginTop: 6
   },
-  progressFill: { 
-    height: '100%', 
-    backgroundColor: colors.primary, 
-    borderRadius: 2 
+  progressFill: {
+    height: '100%',
+    backgroundColor: colors.primary,
+    borderRadius: 2
   },
-  
+
   // Expandable content styles
   expandedContent: {
     paddingTop: 8,
